@@ -65,26 +65,28 @@ wget https://dl.fbaipublicfiles.com/sscd-copy-detection/sscd_imagenet_mixup.torc
 ```
 
 
-<!-- **Models:** all our models can be downloaded from [here](https://www.cs.cmu.edu/~concept-ablation/models/).
-
-(```/grogu/user/bingliaz/revf/code/logs```, 16 models that are all evaluated and tested) -->
+**Ablated Models:** we provide our final models with cross-attention weights fien-tuning [here](https://www.cs.cmu.edu/~concept-ablation/models/). 
+To sample images from provided models: 
+```
+python sample.py --ckpt assets/pretrained_models/sd-v1-4.ckpt --delta_ckpt {downloaded-file} --prompt {} --ddim_steps 100 --outdir {} --n_copies 10 
+```
 
 #### Training
  
 **Style ablation**
 
 ```
-python train.py -t --gpus 0,1 --concept_type style --caption_target  "van gogh" --prompts assets/finetune_prompts/painting.txt --name "vangogh_painting" 
+python train.py -t --gpus 0,1 --concept_type style --caption_target  "van gogh" --prompts assets/finetune_prompts/painting.txt --name "vangogh_painting" --train_size 200
 ```
 
 **Instance ablation**
 ```
-python train.py -t --gpus 0,1 --concept_type object --caption_target  "cat+grumpy cat" --prompts assets/finetune_prompts/cat.txt --name "grumpy_cat" 
+python train.py -t --gpus 0,1 --concept_type object --caption_target  "cat+grumpy cat" --prompts assets/finetune_prompts/cat.txt --name "grumpy_cat" --train_size 200
 ```
 
 **Memorized image ablation**
 ```
-python train.py -t --gpus 0,1 --concept_type memorization --caption_target  "New Orleans House Galaxy Case" --prompts assets/finetune_prompts/orleans_mem.txt --name "orleans_galaxy_case" --mem_impath assets/mem_images/orleans.png
+python train.py -t --gpus 0,1 --concept_type memorization --caption_target  "New Orleans House Galaxy Case" --prompts assets/finetune_prompts/orleans_mem.txt --name "orleans_galaxy_case" --mem_impath assets/mem_images/orleans.png --train_size 200
 ```
 
 For each concept ablation, we first generate training images which can take some time. To ablate any new concept, we need to provide the following required details and modify the above training commands accordingly:
@@ -98,13 +100,13 @@ For each concept ablation, we first generate training images which can take some
 Optional:
 
 * `parameter_group`: ['full-weight', 'cross-attn', 'embedding'] (default: 'cross-attn')
-* `loss_type_reverse`: the loss type for finetuning. ['model-based', 'noise-based', 'loss-max'] (default: 'kldiv')
+* `loss_type_reverse`: the loss type for finetuning. ['model-based', 'noise-based'] (default: 'model-based')
 * `resume-from-checkpoint-custom`: the checkpoint path of pretrained model
 * `regularization`: store-true, add regularization loss
 * `train_size`: number of generated images for finetuning (default: 1000)
-* `train_max_steps`: overwrite max_steps in finetuning (default: 200 for style and object, 400 for memorization)
+* `train_max_steps`: overwrite max_steps in finetuning (default: 100 for style and object, 400 for memorization)
 * `base_lr`: overwrite base learning rate (default: 2e-6 for style and object, 5e-7 for memorization)
-* `save_freq`: checkpoint saving steps (default: 200)
+* `save_freq`: checkpoint saving steps (default: 100)
 * `logdir`: path where experiment is saved (default: logs)
 
 
@@ -112,7 +114,7 @@ Optional:
 #### Sampling
 
 ```
-python sample.py --ckpt {} --from-file {} --ddim_steps 100 --outdir {} --name {} --n_copies 10 
+python sample.py --ckpt {} --from-file {} --ddim_steps 100 --outdir {} --n_copies 10 
 ```
 
 * `ckpt`: the location to checkpoint path
