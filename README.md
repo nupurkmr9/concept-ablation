@@ -65,13 +65,13 @@ wget https://dl.fbaipublicfiles.com/sscd-copy-detection/sscd_imagenet_mixup.torc
 ```
 
 
-**Ablated Models:** we provide our final models with cross-attention weights fien-tuning [here](https://www.cs.cmu.edu/~concept-ablation/models/). 
+**Ablated Models:** we provide some of the ablated models with cross-attention weights fine-tuning [here](https://www.cs.cmu.edu/~concept-ablation/models/). 
 To sample images from provided models: 
 ```
 python sample.py --ckpt assets/pretrained_models/sd-v1-4.ckpt --delta_ckpt {downloaded-file} --prompt {} --ddim_steps 100 --outdir {} --n_copies 10 
 ```
 
-#### Training
+## Training
  
 **Style ablation**
 
@@ -92,10 +92,10 @@ python train.py -t --gpus 0,1 --concept_type memorization --caption_target  "New
 For each concept ablation, we first generate training images which can take some time. To ablate any new concept, we need to provide the following required details and modify the above training commands accordingly:
 
 * `concept_type`: ['style', 'object', 'memorization'] (required)
-* `caption_target`: concept to be removed (artist e.g. "van gogh" or instance e.g. "cat+grumpy cat" or memorization prompt e.g. "New Orleans House Galaxy Case" )
+* `caption_target`: concept to be removed (artist, e.g., "van gogh" or instance, e.g., "cat+grumpy cat" or memorization prompt, e.g., "New Orleans House Galaxy Case" )
 * `prompts`: path to anchor prompts 
 * `name`: name of the experiment
-* `mem_impath`: path to memorized image (required when concept_type='memorization')
+* `mem_impath`: path to the memorized image (required when concept_type='memorization')
 
 Optional:
 
@@ -145,8 +145,6 @@ python evaluate.py --gpu 0,1 --root {} --filter {} --concept_type {} --caption_t
 * `outpkl`: the location to save evaluation results (default: metrics/evaluation.pkl)
 * `base_outpath`: the path to the root of baseline generation for FID, KID.
 * `eval_json`: the path to a formatted json file for evaluation metadata
-
-Our baseline generations can be downloaded from [here](??) (/grogu/user/bingliaz/revf/code/assets/baseline_generation)
 
 **evaluation stage**
 
