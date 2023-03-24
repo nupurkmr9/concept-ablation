@@ -1,6 +1,6 @@
 # Concept Ablation
 
-### [website](https://www.cs.cmu.edu/~concept-ablation/)  | [paper](http://arxiv.org/abs/2212.04488) 
+### [website](https://www.cs.cmu.edu/~concept-ablation/)  | [paper](https://arxiv.org/abs/2303.13516) 
 
 <br>
 <div class="gif">
