@@ -86,4 +86,3 @@ def preprocess(opt, prompts, outdir, concept_type, ranks):
                 data, ranks, opt.base[0], opt.resume_from_checkpoint_custom,
                 opt.delta_ckpt, str(outdir), 200
             )
-

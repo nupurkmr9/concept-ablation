@@ -71,8 +71,6 @@
 # END OF TERMS AND CONDITIONS
 
 
-
-
 # Attachment A
 
 # Use Restrictions
@@ -105,6 +103,7 @@ from ldm.util import log_txt_as_img, exists, ismap, isimage, mean_flat, count_pa
 from torchvision.utils import make_grid
 from ldm.models.autoencoder import VQModelInterface, IdentityFirstStage, AutoencoderKL
 import numpy as np
+
 
 class CustomDiffusion(LatentDiffusion):
     def __init__(self,
@@ -232,7 +231,6 @@ class CustomDiffusion(LatentDiffusion):
             return [opt], scheduler
         return opt
 
-
     def forward(self, x, c, *args, **kwargs):
         t = torch.randint(0, self.num_timesteps, (x.shape[0],), device=self.device).long()
         if self.model.conditioning_key is not None:
@@ -243,7 +241,6 @@ class CustomDiffusion(LatentDiffusion):
                 tc = self.cond_ids[t].to(self.device)
                 c = self.q_sample(x_start=c, t=tc, noise=torch.randn_like(c.float()))
         return self.p_losses(x, c, t, *args, **kwargs)
-
 
     def p_losses(self, x_start, cond, t, mask=None, c_target=None, c_null=None, noise=None):
         noise = default(noise, lambda: torch.randn_like(x_start))
@@ -269,7 +266,7 @@ class CustomDiffusion(LatentDiffusion):
             loss_simple = (loss_simple*mask).sum([1, 2, 3])/mask.sum([1, 2, 3])
         else:
             loss_simple = loss_simple.mean([1, 2, 3])
-        
+
         loss_dict.update({f'{prefix}/loss_simple': loss_simple.mean()})
 
         logvar_t = (self.logvar.to(self.device))[t]
@@ -326,13 +323,13 @@ class CustomDiffusion(LatentDiffusion):
         else:
             train_batch = batch
             loss, loss_dict = self.shared_step(train_batch)
-            
+
         self.log_dict(loss_dict, prog_bar=True,
                       logger=True, on_step=True, on_epoch=True)
 
         if isinstance(batch, list):
             self.log_dict(loss_dict2, prog_bar=True,
-                      logger=True, on_step=True, on_epoch=True)
+                          logger=True, on_step=True, on_epoch=True)
 
         self.log("global_step", self.global_step,
                  prog_bar=True, logger=True, on_step=True, on_epoch=False)
@@ -376,12 +373,14 @@ class CustomDiffusion(LatentDiffusion):
     @rank_zero_only
     def on_save_checkpoint(self, checkpoint):
 
-        if self.freeze_model == 'none':  # If we are not tuning the model itself, zero-out the checkpoint content to preserve memory.
+        # If we are not tuning the model itself, zero-out the checkpoint content to preserve memory.
+        if self.freeze_model == 'none':
             checkpoint.clear()
 
             if os.path.isdir(self.trainer.checkpoint_callback.dirpath):
                 # ntokens = len(self.cond_stage_model.modifier_token)
-                torch.save({'embed': self.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight}, os.path.join(self.trainer.checkpoint_callback.dirpath, f'delta_{self.current_epoch}_{self.global_step}.ckpt'))
+                torch.save({'embed': self.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight}, os.path.join(
+                    self.trainer.checkpoint_callback.dirpath, f'delta_{self.current_epoch}_{self.global_step}.ckpt'))
 
     @torch.no_grad()
     def log_images(self, batch, N=8, n_row=4, sample=True, ddim_steps=100, ddim_eta=1., return_keys=None,
@@ -438,11 +437,12 @@ class CustomDiffusion(LatentDiffusion):
         if sample:
             # get denoise row
             with self.ema_scope("Plotting"):
-                unconditional_guidance_scale=6.
+                unconditional_guidance_scale = 6.
                 unconditional_conditioning = self.get_learned_conditioning(len(c) * [""])
-                samples, z_denoise_row = self.sample_log(cond=c,batch_size=N,ddim=use_ddim,
-                                                         ddim_steps=ddim_steps,eta=ddim_eta,
-                                                        unconditional_conditioning=unconditional_conditioning, unconditional_guidance_scale=unconditional_guidance_scale)
+                samples, z_denoise_row = self.sample_log(
+                    cond=c, batch_size=N, ddim=use_ddim, ddim_steps=ddim_steps, eta=ddim_eta,
+                    unconditional_conditioning=unconditional_conditioning,
+                    unconditional_guidance_scale=unconditional_guidance_scale)
                 # samples, z_denoise_row = self.sample(cond=c, batch_size=N, return_intermediates=True)
             x_samples = self.decode_first_stage(samples)
             log["samples_scaled"] = x_samples
@@ -454,8 +454,8 @@ class CustomDiffusion(LatentDiffusion):
                     self.first_stage_model, IdentityFirstStage):
                 # also display when quantizing x0 while sampling
                 with self.ema_scope("Plotting Quantized Denoised"):
-                    samples, z_denoise_row = self.sample_log(cond=c,batch_size=N,ddim=use_ddim,
-                                                             ddim_steps=ddim_steps,eta=ddim_eta,
+                    samples, z_denoise_row = self.sample_log(cond=c, batch_size=N, ddim=use_ddim,
+                                                             ddim_steps=ddim_steps, eta=ddim_eta,
                                                              quantize_denoised=True)
                     # samples, z_denoise_row = self.sample(cond=c, batch_size=N, return_intermediates=True,
                     #                                      quantize_denoised=True)
@@ -471,16 +471,16 @@ class CustomDiffusion(LatentDiffusion):
                 mask = mask[:, None, ...]
                 with self.ema_scope("Plotting Inpaint"):
 
-                    samples, _ = self.sample_log(cond=c,batch_size=N,ddim=use_ddim, eta=ddim_eta,
-                                                ddim_steps=ddim_steps, x0=z[:N], mask=mask)
+                    samples, _ = self.sample_log(cond=c, batch_size=N, ddim=use_ddim, eta=ddim_eta,
+                                                 ddim_steps=ddim_steps, x0=z[:N], mask=mask)
                 x_samples = self.decode_first_stage(samples.to(self.device))
                 log["samples_inpainting"] = x_samples
                 log["mask"] = mask
 
                 # outpaint
                 with self.ema_scope("Plotting Outpaint"):
-                    samples, _ = self.sample_log(cond=c, batch_size=N, ddim=use_ddim,eta=ddim_eta,
-                                                ddim_steps=ddim_steps, x0=z[:N], mask=mask)
+                    samples, _ = self.sample_log(cond=c, batch_size=N, ddim=use_ddim, eta=ddim_eta,
+                                                 ddim_steps=ddim_steps, x0=z[:N], mask=mask)
                 x_samples = self.decode_first_stage(samples.to(self.device))
                 log["samples_outpainting"] = x_samples
 

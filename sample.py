@@ -71,8 +71,6 @@
 # END OF TERMS AND CONDITIONS
 
 
-
-
 # Attachment A
 
 # Use Restrictions
@@ -90,7 +88,11 @@
 # - To provide medical advice and medical results interpretation;
 # - To generate or disseminate information for the purpose to be used for administration of justice, law enforcement, immigration or asylum processes, such as predicting an individual will commit fraud/crime commitment (e.g. by text profiling, drawing causal relationships between assertions made in documents, indiscriminate and arbitrarily-targeted use).
 
-import argparse, os, sys, glob
+from io import BytesIO
+import argparse
+import os
+import sys
+import glob
 import torch
 import numpy as np
 from omegaconf import OmegaConf
@@ -126,7 +128,8 @@ def load_model_from_config(config, ckpt, verbose=False):
     token_weights = sd["cond_stage_model.transformer.text_model.embeddings.token_embedding.weight"]
     del sd["cond_stage_model.transformer.text_model.embeddings.token_embedding.weight"]
     m, u = model.load_state_dict(sd, strict=False)
-    model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[:token_weights.shape[0]] = token_weights
+    model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[
+        : token_weights.shape[0]] = token_weights
     if len(m) > 0 and verbose:
         print("missing keys:")
         print(m)
@@ -138,7 +141,7 @@ def load_model_from_config(config, ckpt, verbose=False):
     model.eval()
     return model
 
-from io import BytesIO
+
 def pil_to_jpg(img):
     out = BytesIO()
     img.save(out, format='jpeg', quality=70)
@@ -269,7 +272,7 @@ def main():
         "--ckpt",
         type=str,
         default='assets/pretrained_models/sd-v1-4.ckpt',
-        #required=True,
+        # required=True,
         help="path to checkpoint of the pre-trained model",
     )
     parser.add_argument(
@@ -353,7 +356,9 @@ def main():
     else:
         sampler = DDIMSampler(model)
 
-    if opt.delta_ckpt is not None and len(glob.glob(os.path.join(opt.delta_ckpt.split('checkpoints')[0], "configs/*.yaml"))) :
+    if opt.delta_ckpt is not None and len(
+        glob.glob(os.path.join(opt.delta_ckpt.split('checkpoints')[0],
+                               "configs/*.yaml"))):
         outpath = os.path.dirname(os.path.dirname(opt.delta_ckpt))
     elif len(glob.glob(os.path.join(opt.ckpt.split('checkpoints')[0], "configs/*.yaml"))) > 0:
         outpath = os.path.dirname(os.path.dirname(opt.ckpt))
@@ -424,7 +429,6 @@ def main():
                                     captions.append(caption)
                                 base_count += 1
 
-
                         if not opt.skip_grid:
                             all_samples.append(x_samples_ddim)
 
@@ -443,10 +447,14 @@ def main():
                         else:
                             ckptname = opt.ckpt.split('/')[-1].split('.ckpt')[0]
                         img = img.convert('RGB')
-                        prompt_name = "".join(ch for ch in prompts[0] if ch.isalpha() or ch.isspace() )
+                        prompt_name = "".join(ch for ch in prompts[0] if ch.isalpha() or ch.isspace())
                         prompt_name = prompt_name.replace(" ", "-")
                         file_prompt_name = prompt_name[:60]
-                        img.save(os.path.join(outpath, f'{file_prompt_name}_{ckptname}_{opt.scale}_{sampling_method}_{opt.ddim_steps}_{opt.ddim_eta}.jpg'), quality=70)
+                        img.save(
+                            os.path.join(
+                                outpath,
+                                f'{file_prompt_name}_{ckptname}_{opt.scale}_{sampling_method}_{opt.ddim_steps}_{opt.ddim_eta}.jpg'),
+                            quality=70)
                         grid_count += 1
 
     if opt.metadata:
@@ -462,5 +470,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

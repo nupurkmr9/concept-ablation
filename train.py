@@ -88,7 +88,11 @@
 # - To provide medical advice and medical results interpretation;
 # - To generate or disseminate information for the purpose to be used for administration of justice, law enforcement, immigration or asylum processes, such as predicting an individual will commit fraud/crime commitment (e.g. by text profiling, drawing causal relationships between assertions made in documents, indiscriminate and arbitrarily-targeted use).
 
-import argparse, os, sys, datetime, glob
+import argparse
+import os
+import sys
+import datetime
+import glob
 import numpy as np
 import time
 import torch
@@ -752,7 +756,7 @@ class CUDACallback(Callback):
             # Get the index for tokens that we want to zero the grads for
             grads_text_encoder = pl_module.cond_stage_model.transformer.get_input_embeddings().weight.grad
             index_grads_to_zero = torch.arange(len(pl_module.cond_stage_model.tokenizer)) != \
-                                  pl_module.cond_stage_model.modifier_token_id[0]
+                pl_module.cond_stage_model.modifier_token_id[0]
             print((index_grads_to_zero * 1).sum())
             for i in range(len(pl_module.cond_stage_model.modifier_token_id[1:])):
                 index_grads_to_zero = index_grads_to_zero & (torch.arange(len(pl_module.cond_stage_model.tokenizer)) !=
@@ -983,7 +987,7 @@ if __name__ == "__main__":
             del st["cond_stage_model.transformer.text_model.embeddings.token_embedding.weight"]
             model.load_state_dict(st, strict=False)
             model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[
-            :token_weights.shape[0]] = token_weights
+                :token_weights.shape[0]] = token_weights
 
         if opt.delta_ckpt is not None:
             st = torch.load(opt.delta_ckpt)
@@ -1003,7 +1007,7 @@ if __name__ == "__main__":
             if embed is not None:
                 print("restoring embedding")
                 model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[
-                token_weights.shape[0]: token_weights.shape[0] + embed.shape[0]] = embed
+                    token_weights.shape[0]: token_weights.shape[0] + embed.shape[0]] = embed
 
         # trainer and callbacks
         trainer_kwargs = dict()
@@ -1170,8 +1174,8 @@ if __name__ == "__main__":
             print("++++ NOT USING LR SCALING ++++")
             print(f"Setting learning rate to {model.learning_rate:.2e}")
 
-
         # allow checkpointing via USR1
+
         def melk(*args, **kwargs):
             # run all checkpoint hooks
             if trainer.global_rank == 0:
@@ -1179,12 +1183,10 @@ if __name__ == "__main__":
                 ckpt_path = os.path.join(ckptdir, "last.ckpt")
                 trainer.save_checkpoint(ckpt_path)
 
-
         def divein(*args, **kwargs):
             if trainer.global_rank == 0:
                 import pudb
                 pudb.set_trace()
-
 
         import signal
 

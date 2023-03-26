@@ -1,4 +1,7 @@
-import argparse, os, sys, glob
+import argparse
+import os
+import sys
+import glob
 import pathlib
 import numpy as np
 from omegaconf import OmegaConf
@@ -52,6 +55,7 @@ class CLIPCapDataset(torch.utils.data.Dataset):
 
 def Convert(image):
     return image.convert("RGB")
+
 
 class CLIPImageDataset(torch.utils.data.Dataset):
     def __init__(self, data):
@@ -232,7 +236,7 @@ def load_model_from_config(config, ckpt, verbose=False):
     del sd["cond_stage_model.transformer.text_model.embeddings.token_embedding.weight"]
     m, u = model.load_state_dict(sd, strict=False)
     model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[
-    :token_weights.shape[0]] = token_weights
+        :token_weights.shape[0]] = token_weights
     if len(m) > 0 and verbose:
         print("missing keys:")
         print(m)
@@ -382,9 +386,11 @@ def check_generation(folder, numgen):
         return False
     return len(list((folder/'samples').glob('*'))) == numgen
 
+
 def retrieve_target_prompts(type, target, eval_json):
     meta_data = json.load(open(eval_json, 'r'))[type][target]
     return [meta_data['target'], meta_data['anchor']] + meta_data['hard_negative']
+
 
 def getmetrics(type, target, base_sample_root, ranks, ckpt, config,
                sample_root, eval_json, numgen, base_ckpt="model-v1-4.ckpt"):
@@ -415,7 +421,7 @@ def getmetrics(type, target, base_sample_root, ranks, ckpt, config,
             base_data = load_data(cur_target, numgen)
         elif type == 'object':
             base_data = load_data(meta_data['anchor'], numgen,
-                             meta_data['anchor'], cur_target)
+                                  meta_data['anchor'], cur_target)
         else:
             raise NotImplementedError
 
@@ -466,7 +472,6 @@ def calmetrics(target_prompts, sample_root, outpath, base_sample_root):
         else:
             df.loc[df.index == expname, sd.keys()] = sd.values()
     df.to_pickle(outpath)
-
 
 
 def parse_args():

@@ -71,8 +71,6 @@
 # END OF TERMS AND CONDITIONS
 
 
-
-
 # Attachment A
 
 # Use Restrictions
@@ -104,6 +102,7 @@ templates_small = [
 templates_small_style = [
     'painting in the style of {}',
 ]
+
 
 def isimage(path):
     if 'png' in path.lower() or 'jpg' in path.lower() or 'jpeg' in path.lower():
@@ -157,12 +156,16 @@ class MaskBase(Dataset):
         if self.style:
             self.templates_small = templates_small_style
         if os.path.isdir(datapath):
-            self.image_paths1 = [os.path.join(datapath, file_path) for file_path in os.listdir(datapath) if isimage(file_path)]
+            self.image_paths1 = [os.path.join(datapath, file_path)
+                                 for file_path in os.listdir(datapath) if isimage(file_path)]
         else:
             with open(datapath, "r") as f:
                 self.image_paths1 = f.read().splitlines()
-                self.image_paths1 = [x.replace('/sensei-fs/users/nupkumar/', '/grogu/user/nkumari/data_custom_diffusion/final_data/regularization_data/') for x in self.image_paths1]
-
+                self.image_paths1 = [
+                    x.replace(
+                        '/sensei-fs/users/nupkumar/',
+                        '/grogu/user/nkumari/data_custom_diffusion/final_data/regularization_data/')
+                    for x in self.image_paths1]
 
         self._length1 = len(self.image_paths1)
 
@@ -170,11 +173,16 @@ class MaskBase(Dataset):
         self._length2 = 0
         if reg_datapath is not None:
             if os.path.isdir(reg_datapath):
-                self.image_paths2 = [os.path.join(reg_datapath, file_path) for file_path in os.listdir(reg_datapath) if isimage(file_path)]
+                self.image_paths2 = [os.path.join(reg_datapath, file_path)
+                                     for file_path in os.listdir(reg_datapath) if isimage(file_path)]
             else:
                 with open(reg_datapath, "r") as f:
                     self.image_paths2 = f.read().splitlines()
-                    self.image_paths2 = [x.replace('/sensei-fs/users/nupkumar/', '/grogu/user/nkumari/data_custom_diffusion/final_data/regularization_data/') for x in self.image_paths2]
+                    self.image_paths2 = [
+                        x.replace(
+                            '/sensei-fs/users/nupkumar/',
+                            '/grogu/user/nkumari/data_custom_diffusion/final_data/regularization_data/')
+                        for x in self.image_paths2]
             self._length2 = len(self.image_paths2)
 
         self.labels = {
@@ -221,7 +229,7 @@ class MaskBase(Dataset):
             if isinstance(self.caption, str):
                 example["caption"] = np.random.choice(self.templates_small).format(self.caption)
             else:
-                example["caption"] = self.caption[i % min(self._length1, len(self.caption)) ]
+                example["caption"] = self.caption[i % min(self._length1, len(self.caption))]
             if self.caption_target is not None:
                 if self.style:
                     example["caption_target"] = example["caption"]
@@ -277,10 +285,12 @@ class MaskBase(Dataset):
                 image = (image / 127.5 - 1.0).astype(np.float32)
 
                 input_image1 = np.zeros((self.size, self.size, 3), dtype=np.float32)
-                input_image1[cx - random_scale // 2: cx + random_scale // 2, cy - random_scale // 2: cy + random_scale // 2, :] = image
+                input_image1[cx - random_scale // 2: cx + random_scale // 2,
+                             cy - random_scale // 2: cy + random_scale // 2, :] = image
 
                 mask = np.zeros((self.size // 8, self.size // 8))
-                mask[(cx - random_scale // 2) // 8 + 1: (cx + random_scale // 2) // 8 - 1, (cy - random_scale // 2) // 8 + 1: (cy + random_scale // 2) // 8 - 1] = 1.
+                mask[(cx - random_scale // 2) // 8 + 1: (cx + random_scale // 2) // 8 - 1,
+                     (cy - random_scale // 2) // 8 + 1: (cy + random_scale // 2) // 8 - 1] = 1.
 
             elif random_scale > self.size:
                 add_to_caption = np.random.choice(["zoomed in ", "close up "])
@@ -291,7 +301,8 @@ class MaskBase(Dataset):
                 image = image.resize((random_scale, random_scale), resample=self.interpolation)
                 image = np.array(image).astype(np.uint8)
                 image = (image / 127.5 - 1.0).astype(np.float32)
-                input_image1 = image[cx - self.size // 2: cx + self.size // 2, cy - self.size // 2: cy + self.size // 2, :]
+                input_image1 = image[cx - self.size // 2: cx + self.size //
+                                     2, cy - self.size // 2: cy + self.size // 2, :]
                 mask = np.ones((self.size // 8, self.size // 8))
             else:
                 if self.size is not None:
@@ -308,5 +319,5 @@ class MaskBase(Dataset):
 
         example["image"] = input_image1
         example["mask"] = mask
-    
+
         return example
