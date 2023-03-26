@@ -9,32 +9,42 @@
 </p>
 </div>
 
+Our method can ablate (remove) copyrighted materials and memorized images from pretrained Stable Diffusion models. Here we change the target concept distribution to an anchor concept, e.g., Van Gogh painting to paintings or Grumpy cat to Cat.
+
+
+***Ablating Concepts in Text-to-Image Diffusion Models*** <br>
+[Nupur Kumari](https://nupurkmr9.github.io/), [Bingliang Zhang](https://zhangbingliang2019.github.io), [Sheng-Yu Wang](https://peterwang512.github.io), [Eli Shechtman](https://research.adobe.com/person/eli-shechtman/), [Richard Zhang](https://richzhang.github.io/), [Jun-Yan Zhu](https://www.cs.cmu.edu/~junyanz/)<br>
+CMU, Tsinghua, Adobe <br>
+arXiv, 2023
+
+## Introduction
 Large-scale text-to-image diffusion models can generate high-fidelity images with powerful compositional ability. However, these models are typically trained on an enormous amount of Internet data, often containing copyrighted material, licensed images, and personal photos. Furthermore, they have been found to replicate the style of various living artists or memorize exact training samples. How can we remove such copyrighted concepts or images without retraining the model from scratch?
 
 We propose an efficient method of ablating concepts in the pretrained model, i.e., preventing the generation of a target concept. Our algorithm learns to match the image distribution for a given target style, instance, or text prompt we wish to ablate to the distribution corresponding to an anchor concept, e.g., Grumpy Cat to Cats.
 
-***Ablating Concepts in Text-to-Image Diffusion Models*** <br>
-[Nupur Kumari](https://nupurkmr9.github.io/), [Bingliang Zhang](https://zhangbingliang2019.github.io), [Sheng-Yu Wang](https://peterwang512.github.io), [Eli Shechtman](https://research.adobe.com/person/eli-shechtman/), [Richard Zhang](https://richzhang.github.io/), [Jun-Yan Zhu](https://www.cs.cmu.edu/~junyanz/)<br>
-
-
 ## Results
 
-We show results of our method on various concept ablation tasks, including specific object instances, artistic styles, and memorized images. We can successfully ablate target concepts while minimally affecting closely related surrounding concepts that should be preserved (e.g., other cat breeds when ablating Grumpy Cat). All our results are based on fine-tuning [stable-diffusion-v1-4](https://huggingface.co/CompVis/stable-diffusion-v-1-4-original) model.
+Our method works well on various concept ablation tasks, including specific object instances, artistic styles, and memorized images. We can successfully ablate target concepts while minimally affecting closely-related surrounding concepts that should be preserved (e.g., other cat breeds when ablating Grumpy Cat). All our results are based on [stable-diffusion-v1-4](https://huggingface.co/CompVis/stable-diffusion-v-1-4-original) model.
 
 For more generations and comparisons, please refer to our [webpage](https://www.cs.cmu.edu/~concept-ablation/).
 
 
 ### Style Ablation
+We ablate different target artistic style concepts and generate normal paintings instead.
+
 <p align="center">
 <img src='assets/style_ablation.jpg' align="center" width=800>
 </p>
 
 ### Instance Ablation
+We ablate various instances and overwrite them with general category anchor concepts. 
 <p align="center">
 <img src='assets/instance_ablation.jpg' align="center" width=800>
 </p>
 
 ### Memorized Image Ablation
+Our method can ablate memorized training images and instead generate variations. 
+
 <p align="center">
 <img src='assets/memorization.jpg' align="center" width=800>
 </p>
@@ -107,7 +117,7 @@ Optional:
 * `train_max_steps`: overwrite max_steps in finetuning (default: 100 for style and object, 400 for memorization)
 * `base_lr`: overwrite base learning rate (default: 2e-6 for style and object, 5e-7 for memorization)
 * `save_freq`: checkpoint saving steps (default: 100)
-* `logdir`: path where experiment is saved (default: logs)
+* `logdir`: path where the experiment is saved (default: logs)
 
 
 
@@ -152,11 +162,11 @@ python evaluate.py --gpu 0,1 --root {} --filter {} --concept_type {} --caption_t
 python evaluate.py --gpu 0,1 --root {} --filter {} --concept_type {} --caption_target {}  --outpkl {} --base_outpath {} --eval_json {} --eval_stage True
 ```
 
-same script with addtional parameter: `--eval_stage True`
+the same script with additional parameters: `--eval_stage True`
 
-**adding entries to eval_json file**
+**Adding entries to eval_json file**
 
-For customized concept, user has to mannually specify a **new entry** in eval_json file and put that to correct concept type
+For customized concepts, a user has to manually specify a **new entry** in eval_json file and put that to the correct concept type.
 
 ````
 caption target:{
@@ -171,3 +181,14 @@ caption target:{
 }
 ````
 
+## Citation
+If you use this code for your research, please cite our paper.
+
+```bibtex
+@article{kumari2023conceptablation,
+  author = {Kumari, Nupur and Zhang, Bingliang and Wang, Sheng-Yu and Shechtman, Eli and Zhang, Richard and Zhu, Jun-Yan},
+  title = {Ablating Concepts in Text-to-Image Diffusion Models},
+  journal = {Arxiv},
+  year = {2023},
+}
+```
