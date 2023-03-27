@@ -231,20 +231,7 @@ class FrozenCLIPEmbedderWrapper(AbstractEncoder):
         self.device = device
         self.max_length = max_length
         self.modifier_token = modifier_token
-        self.modifier_token_id = []
-        if self.modifier_token == 'vangogh':
-            self.modifier_token_id = [2451, 19697]
-        elif self.modifier_token == 'monet':
-            self.modifier_token_id = [24499]
-        elif self.modifier_token == 'greg':
-            self.modifier_token_id = [7943, 14973, 17649]
-        elif self.modifier_token == 'grumpycat':
-            self.modifier_token_id = [23610,  2368]
-        elif self.modifier_token == 'r2d2':
-            self.modifier_token_id = [337,   273,   323,   273]
-        elif self.modifier_token == 'nemo':
-            self.modifier_token_id = [30441]
-
+        self.modifier_token_id = self.tokenizer(self.modifier_token)['input_ids'][1:-1]
         print(self.modifier_token, self.modifier_token_id)
 
         self.freeze()
