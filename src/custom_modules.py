@@ -209,7 +209,6 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 from packaging import version
-import torch
 import torch.nn as nn
 import transformers
 from transformers import CLIPTokenizer, CLIPTextModel
@@ -234,9 +233,9 @@ class FrozenCLIPEmbedderWrapper(AbstractEncoder):
         self.modifier_token = modifier_token
         self.modifier_token_id = []
         if self.modifier_token == 'vangogh':
-            self.modifier_token_id =[ 2451, 19697]
+            self.modifier_token_id = [2451, 19697]
         elif self.modifier_token == 'monet':
-            self.modifier_token_id =[24499]
+            self.modifier_token_id = [24499]
         elif self.modifier_token == 'greg':
             self.modifier_token_id = [7943, 14973, 17649]
         elif self.modifier_token == 'grumpycat':
@@ -249,22 +248,6 @@ class FrozenCLIPEmbedderWrapper(AbstractEncoder):
         print(self.modifier_token, self.modifier_token_id)
 
         self.freeze()
-
-    def add_token(self):
-        self.modifier_token_id = []
-        token_embeds1 = self.transformer.get_input_embeddings().weight.data
-        for each_modifier_token in self.modifier_token:
-            num_added_tokens = self.tokenizer.add_tokens(each_modifier_token)
-            modifier_token_id = self.tokenizer.convert_tokens_to_ids(each_modifier_token)
-            self.modifier_token_id.append(modifier_token_id)
-
-        self.transformer.resize_token_embeddings(len(self.tokenizer))
-        token_embeds = self.transformer.get_input_embeddings().weight.data
-        token_embeds[self.modifier_token_id[-1]] = torch.nn.Parameter(token_embeds[42170], requires_grad=True)
-        if len(self.modifier_token) == 2:
-            token_embeds[self.modifier_token_id[-2]] = torch.nn.Parameter(token_embeds[47629], requires_grad=True)
-        if len(self.modifier_token) == 3:
-            token_embeds[self.modifier_token_id[-3]] = torch.nn.Parameter(token_embeds[43514], requires_grad=True)
 
     def custom_forward(self, hidden_states, input_ids):
         r"""

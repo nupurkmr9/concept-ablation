@@ -310,6 +310,7 @@ def distributed_sample_images(data, ranks, config, ckpt, delta_ckpt, outpath, dd
         for i in captions:
             f.write(i + '\n')
 
+
 def safe_dir(dir):
     if not dir.exists():
         dir.mkdir()

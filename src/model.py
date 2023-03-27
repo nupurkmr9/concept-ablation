@@ -90,18 +90,16 @@
 import os
 import torch
 from einops import rearrange, repeat
-from torch import nn, einsum
-from functools import partial
-
+from torch import einsum
 from pytorch_lightning.utilities import rank_zero_only
 
 from ldm.models.diffusion.ddpm import LatentDiffusion as LatentDiffusion
 from ldm.util import default
 from ldm.modules.attention import BasicTransformerBlock as BasicTransformerBlock
 from ldm.modules.attention import CrossAttention as CrossAttention
-from ldm.util import log_txt_as_img, exists, ismap, isimage, mean_flat, count_params, instantiate_from_config
+from ldm.util import log_txt_as_img, ismap, isimage, instantiate_from_config
 from torchvision.utils import make_grid
-from ldm.models.autoencoder import VQModelInterface, IdentityFirstStage, AutoencoderKL
+from ldm.models.autoencoder import IdentityFirstStage, AutoencoderKL
 import numpy as np
 
 

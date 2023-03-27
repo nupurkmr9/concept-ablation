@@ -137,9 +137,8 @@ python sample.py --ckpt {} --from-file {} --ddim_steps 100 --outdir {} --n_copie
 
 #### Evaluating
 
-For model evaluation, we provide a script to compute CLIP score, CLIP accuracy, FID and KID to baseline model.
-
-The scripts contain two seprate stages, **generation** and **evaluation**
+For model evaluation, we provide a script to compute CLIP score, CLIP accuracy and KID metrics.
+It consists of two separate stages, **generation** and **evaluation**
 
 **generation stage**
 

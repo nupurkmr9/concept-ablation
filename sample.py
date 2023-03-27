@@ -91,7 +91,6 @@
 from io import BytesIO
 import argparse
 import os
-import sys
 import glob
 import torch
 import numpy as np

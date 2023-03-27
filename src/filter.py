@@ -1,12 +1,9 @@
 import argparse
 import os
 from pathlib import Path
-import requests
 from PIL import Image
-from io import BytesIO
-import numpy as np
 import shutil
-
+import torch
 from torchvision import transforms
 
 normalize = transforms.Normalize(
@@ -22,12 +19,6 @@ skew_320 = transforms.Compose([
     transforms.ToTensor(),
     normalize,
 ])
-
-import torch
-from PIL import Image
-
-import torch
-from PIL import Image
 
 
 def isimage(path):
@@ -99,16 +90,17 @@ def filter(folder, outpath, unfiltered_path, impath, threshold=0.15,
     #         f.write(each.strip() + '\n')
     #         imbase = Path(each).name
     #         shutil.copy(each, f'{unfiltered_path}/{imbase}')
-    print(f'++++++++++++++++++++++++++++++++++++++++++++++++')
-    print(f'+ Filter Summary +')
-    print(f'+ Remained images: {len(filtered_paths)}')
-    print(f'+ Filtered images: {len(unfiltered_paths)}')
-    print(f'++++++++++++++++++++++++++++++++++++++++++++++++')
+    print('++++++++++++++++++++++++++++++++++++++++++++++++')
+    print('+ Filter Summary +')
+    print('+ Remained images: {len(filtered_paths)}')
+    print('+ Filtered images: {len(unfiltered_paths)}')
+    print('++++++++++++++++++++++++++++++++++++++++++++++++')
 
     sorted_list = sorted(list(count_dict.items()), key=lambda x: x[1], reverse=True)
     anchor_prompts = [c[0] for c in sorted_list[:anchor_size]]
     target_prompts = [c[0] for c in sorted_list[-target_size:]]
     return anchor_prompts, target_prompts
+
 
 def parse_args():
     parser = argparse.ArgumentParser('', add_help=False)
