@@ -8,7 +8,7 @@
 #
 # Adobe’s modifications are Copyright 2022 Adobe Research. All rights reserved.
 # Adobe’s modifications are licensed under the Adobe Research License. To view a copy of the license, visit
-# LICENSE.md.
+# LICENSE.
 #
 # ==========================================================================================
 #

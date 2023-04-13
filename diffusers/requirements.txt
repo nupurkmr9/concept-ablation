@@ -1,0 +1,6 @@
+accelerate
+modelcards
+transformers>=4.25.1
+diffusers==0.14.0
+tqdm 
+clip-retrieval

@@ -6,7 +6,7 @@
 #
 # Adobe’s modifications are Copyright 2022 Adobe Research. All rights reserved.
 # Adobe’s modifications are licensed under the Adobe Research License. To view a copy of the license, visit
-# LICENSE.md.
+# LICENSE.
 #
 # ==========================================================================================
 #
@@ -162,14 +162,10 @@ data:
       target: src.finetune_data.MaskBase
       params:
         size: 512
-        style: True
-        aug: False
     train2:
       target: src.finetune_data.MaskBase
       params:
         size: 512
-        style: True
-        aug: False
 
 
 lightning:

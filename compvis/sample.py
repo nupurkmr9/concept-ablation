@@ -6,7 +6,7 @@
 #
 # Adobe’s modifications are Copyright 2022 Adobe Research. All rights reserved.
 # Adobe’s modifications are licensed under the Adobe Research License. To view a copy of the license, visit
-# LICENSE.md.
+# LICENSE.
 #
 # ==========================================================================================
 #
@@ -88,7 +88,10 @@
 # - To provide medical advice and medical results interpretation;
 # - To generate or disseminate information for the purpose to be used for administration of justice, law enforcement, immigration or asylum processes, such as predicting an individual will commit fraud/crime commitment (e.g. by text profiling, drawing causal relationships between assertions made in documents, indiscriminate and arbitrarily-targeted use).
 
-import os, glob
+from io import BytesIO
+import argparse
+import os
+import glob
 import torch
 import numpy as np
 from omegaconf import OmegaConf
@@ -98,13 +101,19 @@ from einops import rearrange
 from torchvision.utils import make_grid
 from pytorch_lightning import seed_everything
 from torch import autocast
-from pathlib import Path
-from io import BytesIO
-import torch.multiprocessing as mp
+from contextlib import contextmanager, nullcontext
 
 from ldm.util import instantiate_from_config
 from ldm.models.diffusion.ddim import DDIMSampler
-import wandb
+from ldm.models.diffusion.plms import PLMSSampler
+from ldm.models.diffusion.dpm_solver import DPMSolverSampler
+
+from itertools import islice
+
+
+def chunk(it, size):
+    it = iter(it)
+    return iter(lambda: tuple(islice(it, size)), ())
 
 
 def load_model_from_config(config, ckpt, verbose=False):
@@ -118,99 +127,311 @@ def load_model_from_config(config, ckpt, verbose=False):
     token_weights = sd["cond_stage_model.transformer.text_model.embeddings.token_embedding.weight"]
     del sd["cond_stage_model.transformer.text_model.embeddings.token_embedding.weight"]
     m, u = model.load_state_dict(sd, strict=False)
-    model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[:token_weights.shape[0]] = token_weights
+    model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[
+        : token_weights.shape[0]] = token_weights
     if len(m) > 0 and verbose:
         print("missing keys:")
         print(m)
     if len(u) > 0 and verbose:
         print("unexpected keys:")
         print(u)
+
+    model.cuda()
     model.eval()
     return model
 
 
-def initialize(config, ckpt, delta_ckpt, seed=42):
-    "initialize a model and sampler given checkpoing path"
-    if delta_ckpt is not None:
-        if len(glob.glob(os.path.join(delta_ckpt.split('checkpoints')[0], "configs/*.yaml"))) > 0:
-            config = sorted(glob.glob(os.path.join(delta_ckpt.split('checkpoints')[0], "configs/*.yaml")))[-1]
+def pil_to_jpg(img):
+    out = BytesIO()
+    img.save(out, format='jpeg', quality=70)
+    img = Image.open(out)
+    out.close()
+    return img
+
+
+def main():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        nargs="?",
+        default="a painting of a virus monster playing guitar",
+        help="the prompt to render"
+    )
+    parser.add_argument(
+        "--outdir",
+        type=str,
+        nargs="?",
+        help="dir to write results to",
+        default="outputs/txt2img-samples"
+    )
+    parser.add_argument(
+        "--skip_grid",
+        action='store_true',
+        help="do not save a grid, only individual samples. Helpful when evaluating lots of samples",
+    )
+    parser.add_argument(
+        "--skip_save",
+        action='store_true',
+        help="do not save individual samples. For speed measurements.",
+    )
+    parser.add_argument(
+        "--ddim_steps",
+        type=int,
+        default=100,
+        help="number of ddim sampling steps",
+    )
+    parser.add_argument(
+        "--plms",
+        action='store_true',
+        help="use plms sampling",
+    )
+    parser.add_argument(
+        "--dpm_solver",
+        action='store_true',
+        help="use dpm_solver sampling",
+    )
+    parser.add_argument(
+        "--laion400m",
+        action='store_true',
+        help="uses the LAION400M model",
+    )
+    parser.add_argument(
+        "--fixed_code",
+        action='store_true',
+        help="if enabled, uses the same starting code across samples ",
+    )
+    parser.add_argument(
+        "--ddim_eta",
+        type=float,
+        default=1.0,
+        help="ddim eta (eta=0.0 corresponds to deterministic sampling",
+    )
+    parser.add_argument(
+        "--n_iter",
+        type=int,
+        default=1,
+        help="sample this often",
+    )
+    parser.add_argument(
+        "--H",
+        type=int,
+        default=512,
+        help="image height, in pixel space",
+    )
+    parser.add_argument(
+        "--W",
+        type=int,
+        default=512,
+        help="image width, in pixel space",
+    )
+    parser.add_argument(
+        "--C",
+        type=int,
+        default=4,
+        help="latent channels",
+    )
+    parser.add_argument(
+        "--f",
+        type=int,
+        default=8,
+        help="downsampling factor",
+    )
+    parser.add_argument(
+        "--n_samples",
+        type=int,
+        default=10,
+        help="how many samples to produce for each given prompt. A.k.a. batch size",
+    )
+    parser.add_argument(
+        "--n_rows",
+        type=int,
+        default=5,
+        help="rows in the grid (default: n_samples)",
+    )
+    parser.add_argument(
+        "--scale",
+        type=float,
+        default=6.,
+        help="unconditional guidance scale: eps = eps(x, empty) + scale * (eps(x, cond) - eps(x, empty))",
+    )
+    parser.add_argument(
+        "--from-file",
+        type=str,
+        help="if specified, load prompts from this file",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="configs/finetune.yaml",
+        help="path to config which constructs model",
+    )
+    parser.add_argument(
+        "--ckpt",
+        type=str,
+        default='../assets/pretrained_models/sd-v1-4.ckpt',
+        # required=True,
+        help="path to checkpoint of the pre-trained model",
+    )
+    parser.add_argument(
+        "--delta_ckpt",
+        type=str,
+        default=None,
+        help="path to delta checkpoint of fine-tuned custom diffusion block",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="the seed (for reproducible sampling)",
+    )
+    parser.add_argument(
+        "--precision",
+        type=str,
+        help="evaluate at this precision",
+        choices=["full", "autocast"],
+        default="autocast"
+    )
+    parser.add_argument(
+        "--metadata",
+        action='store_true',
+        help="save image path and prompt in a txt file",
+    )
+    parser.add_argument(
+        "--chunk",
+        action='store_true',
+        help="chunk + repeat prompts or not.",
+    )
+    parser.add_argument(
+        "--n_copies",
+        default=1,
+        type=int,
+        help="number of image copy for each prompt"
+    )
+    opt = parser.parse_args()
+
+    from pathlib import Path
+    tpath = Path(opt.outdir)
+    if not tpath.exists():
+        tpath.mkdir()
+
+    if opt.delta_ckpt is not None:
+        if len(glob.glob(os.path.join(opt.delta_ckpt.split('checkpoints')[0], "configs/*.yaml"))) > 0:
+            opt.config = sorted(glob.glob(os.path.join(opt.delta_ckpt.split('checkpoints')[0], "configs/*.yaml")))[-1]
     else:
-        if len(glob.glob(
-                os.path.join(ckpt.split('checkpoints')[0], "configs/*.yaml"))) > 0:
-            config = sorted(
-                glob.glob(os.path.join(ckpt.split('checkpoints')[0], "configs/*.yaml")))[
-                -1]
+        if len(glob.glob(os.path.join(opt.ckpt.split('checkpoints')[0], "configs/*.yaml"))) > 0:
+            opt.config = sorted(glob.glob(os.path.join(opt.ckpt.split('checkpoints')[0], "configs/*.yaml")))[-1]
 
-    seed_everything(seed)
-    config = OmegaConf.load(f"{config}")
-    model = load_model_from_config(config, f"{ckpt}")
+    seed_everything(opt.seed)
+    config = OmegaConf.load(f"{opt.config}")
+    model = load_model_from_config(config, f"{opt.ckpt}")
 
-    device = torch.device('cuda')
+    if opt.delta_ckpt is not None:
+        delta_st = torch.load(opt.delta_ckpt)
+        embed = None
+        if 'embed' in delta_st:
+            if 'state_dict' not in delta_st:
+                delta_st['state_dict'] = {}
+            delta_st['state_dict']['embed'] = delta_st['embed']
+        if 'embed' in delta_st['state_dict']:
+            embed = delta_st['state_dict']['embed'].reshape(-1, 768)
+            del delta_st['state_dict']['embed']
+            print(embed.shape)
+        delta_st = delta_st['state_dict']
+        model.load_state_dict(delta_st, strict=False)
+        if embed is not None:
+            print("loading new embedding")
+            print(model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data.shape)
+            model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[-embed.shape[0]:] = embed
+
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
-    sampler = DDIMSampler(model)
-    return model, sampler, device
 
+    if opt.dpm_solver:
+        sampler = DPMSolverSampler(model)
+    elif opt.plms:
+        sampler = PLMSSampler(model)
+    else:
+        sampler = DDIMSampler(model)
 
-def sample(data, model, sampler, outpath, ddim_steps=200, ddim_eta=1.0,
-                  n_iter=1, scale=6, batch_size=10, shape=(4, 64, 64),
-                  fixed_code=False, device=None, skip_save=False, skip_grid=True,
-                  metadata=True, base_count=0, n_rows=5, wandb_log=False, ckptname='base', rank=None):
-    """
-        decoupled image sampling function, including saving, visualizing and wandb logging
-    """
-    sample_path = os.path.join(outpath, f"samples")
-    if not Path(sample_path).exists():
-        Path(sample_path).mkdir()
+    if opt.delta_ckpt is not None and len(
+        glob.glob(os.path.join(opt.delta_ckpt.split('checkpoints')[0],
+                               "configs/*.yaml"))):
+        outpath = os.path.dirname(os.path.dirname(opt.delta_ckpt))
+    elif len(glob.glob(os.path.join(opt.ckpt.split('checkpoints')[0], "configs/*.yaml"))) > 0:
+        outpath = os.path.dirname(os.path.dirname(opt.ckpt))
+    else:
+        os.makedirs(opt.outdir, exist_ok=True)
+        outpath = opt.outdir
 
-    if metadata:
+    batch_size = opt.n_samples
+    n_rows = opt.n_rows if opt.n_rows > 0 else batch_size
+    if not opt.from_file:
+        prompt = opt.prompt
+        assert prompt is not None
+        data = np.array([opt.n_copies * [prompt]]).flatten().reshape(-1, batch_size).tolist()
+    else:
+        print(f"reading prompts from {opt.from_file}")
+        with open(opt.from_file, "r") as f:
+            data = f.read().splitlines()
+            data = np.array([opt.n_copies * [prompt] for prompt in data]).flatten().reshape(-1, batch_size).tolist()
+    sample_path = os.path.join(outpath, "samples")
+
+    os.makedirs(sample_path, exist_ok=True)
+    base_count = len(os.listdir(sample_path))
+    grid_count = len(os.listdir(outpath)) - 1
+
+    start_code = None
+    if opt.fixed_code:
+        start_code = torch.randn([opt.n_samples, opt.C, opt.H // opt.f, opt.W // opt.f], device=device)
+
+    if opt.metadata:
         images_path = []
         captions = []
-    start_code = None
-    if fixed_code:
-        start_code = torch.randn([batch_size, ] + list(shape), device=device)
-    precision_scope = autocast
+    precision_scope = autocast if opt.precision == "autocast" else nullcontext
     with torch.no_grad():
         with precision_scope("cuda"):
             with model.ema_scope():
                 for prompts in tqdm(data, desc="data"):
                     all_samples = list()
-                    for n in trange(n_iter, desc="Sampling"):
+                    for n in trange(opt.n_iter, desc="Sampling"):
                         print(prompts[0])
                         uc = None
-                        if scale != 1.0:
+                        if opt.scale != 1.0:
                             uc = model.get_learned_conditioning(batch_size * [""])
                         if isinstance(prompts, tuple):
                             prompts = list(prompts)
                         c = model.get_learned_conditioning(prompts)
-                        # shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
-                        samples_ddim, _ = sampler.sample(S=ddim_steps,
+                        shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
+                        samples_ddim, _ = sampler.sample(S=opt.ddim_steps,
                                                          conditioning=c,
-                                                         batch_size=batch_size,
-                                                         shape=list(shape),
+                                                         batch_size=opt.n_samples,
+                                                         shape=shape,
                                                          verbose=False,
-                                                         unconditional_guidance_scale=scale,
+                                                         unconditional_guidance_scale=opt.scale,
                                                          unconditional_conditioning=uc,
-                                                         eta=ddim_eta,
+                                                         eta=opt.ddim_eta,
                                                          x_T=start_code)
                         # print(samples_ddim.size())
                         x_samples_ddim = model.decode_first_stage(samples_ddim)
                         x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
                         x_samples_ddim = x_samples_ddim.cpu()
 
-                        if not skip_save:
+                        if not opt.skip_save:
                             for x_sample, caption in zip(x_samples_ddim, prompts):
                                 x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
                                 img = Image.fromarray(x_sample.astype(np.uint8))
                                 img.save(os.path.join(sample_path, f"{base_count:05}.png"))
-                                if metadata:
+                                if opt.metadata:
                                     images_path.append(os.path.join(sample_path, f"{base_count:05}.png"))
                                     captions.append(caption)
                                 base_count += 1
 
-                        if not skip_grid:
+                        if not opt.skip_grid:
                             all_samples.append(x_samples_ddim)
 
-                    if not skip_grid:
+                    if not opt.skip_grid:
                         # additionally, save as grid
                         grid = torch.stack(all_samples, 0)
                         grid = rearrange(grid, 'n b c h w -> (n b) c h w')
@@ -219,99 +440,32 @@ def sample(data, model, sampler, outpath, ddim_steps=200, ddim_eta=1.0,
                         # to image
                         grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
                         img = Image.fromarray(grid.astype(np.uint8))
-
+                        sampling_method = 'plms' if opt.plms else 'ddim'
+                        if opt.delta_ckpt is not None:
+                            ckptname = opt.delta_ckpt.split('/')[-1].split('.ckpt')[0]
+                        else:
+                            ckptname = opt.ckpt.split('/')[-1].split('.ckpt')[0]
                         img = img.convert('RGB')
                         prompt_name = "".join(ch for ch in prompts[0] if ch.isalpha() or ch.isspace())
                         prompt_name = prompt_name.replace(" ", "-")
                         file_prompt_name = prompt_name[:60]
-                        img.save(os.path.join(outpath,
-                                              f'{file_prompt_name}_{scale}_{ddim_steps}_{ddim_eta}.jpg'),
-                                 quality=70)
-                        if wandb_log:
-                            out = BytesIO()
-                            img.save(out, format='jpeg', quality=70)
-                            img = Image.open(out)
-                            wandb.log({f'{file_prompt_name}_{scale}_{ddim_steps}_{ddim_eta}.jpg': [
-                                wandb.Image(img, caption=ckptname)]})
+                        img.save(
+                            os.path.join(
+                                outpath,
+                                f'{file_prompt_name}_{ckptname}_{opt.scale}_{sampling_method}_{opt.ddim_steps}_{opt.ddim_eta}.jpg'),
+                            quality=70)
+                        grid_count += 1
 
-                            out.close()
-
-    image_txt_path = ''
-    caption_txt_path = ''
-    if metadata:
-        if rank is None:
-            image_txt_path = os.path.join(outpath, 'images.txt')
-            caption_txt_path = os.path.join(outpath, 'caption.txt')
-        else:
-            image_txt_path = os.path.join(outpath, f'images{rank}.txt')
-            caption_txt_path = os.path.join(outpath, f'caption{rank}.txt')
-        with open(image_txt_path, 'w') as f:
-            for i in images_path:
-                f.write(i + '\n')
-        with open(caption_txt_path, 'w') as f:
-            for i in captions:
-                f.write(i + '\n')
-    print('++++++++++++++++++++++++++++++++++++')
-    print('+ Generation Finished ! ++++++++++++')
-    print('++++++++++++++++++++++++++++++++++++')
-    return image_txt_path, caption_txt_path
+    if opt.metadata:
+        with open(f'{opt.outdir}/images.txt', 'w') as f:
+            for impath in images_path:
+                f.write(impath + '\n')
+        with open(f'{opt.outdir}/caption.txt', 'w') as f:
+            for caption in captions:
+                f.write(caption + '\n')
+    print(f"Your samples are ready and waiting for you here: \n{outpath} \n"
+          f" \nEnjoy.")
 
 
-def sample_images(data, rank, config, ckpt, delta_ckpt, outpath, base_count, ddim_steps):
-    torch.cuda.set_device(rank)
-    model, sampler, device = initialize(config, ckpt, delta_ckpt)
-    return sample(data, model, sampler, outpath, ddim_steps, base_count=base_count, rank=rank)
-
-
-def distributed_sample_images(data, ranks, config, ckpt, delta_ckpt, outpath, ddim_steps=200):
-    """
-        data        : list of batch prompts (2-dim list)
-        ranks       : list of available GPU-cards
-        config      : the config file to load model
-        ckpt        : the checkpoint path to model
-        delta_ckpt  : the checkpoint path to delta model
-        outpath     : the root folder to save images
-        ddim_steps  : the ddim steps in generation
-    """
-    process_stack = []
-    count = 0
-    size = int(np.ceil(len(data) / len(ranks)))
-    for i, local_rank in enumerate(ranks):
-        cur_data = data[i*size:(i+1)*size]
-        base_count = i*size * len(data[0])
-        process = mp.Process(target=sample_images,
-                             args=(cur_data, local_rank, config, ckpt, delta_ckpt, outpath, base_count, ddim_steps))
-        process.start()
-        process_stack.append(process)
-        count += 1
-        # wait for each process running
-
-    for process in process_stack:
-        process.join()
-    # merge metadata
-    images_path = []
-    captions = []
-    for local_rank in ranks:
-        cur_image_txt_path = os.path.join(outpath, f'images{local_rank}.txt')
-        cur_caption_txt_path = os.path.join(outpath, f'caption{local_rank}.txt')
-        with open(cur_image_txt_path, 'r') as f:
-            images_path += f.read().splitlines()
-        with open(cur_caption_txt_path, 'r') as f:
-            captions += f.read().splitlines()
-        os.remove(cur_image_txt_path)
-        os.remove(cur_caption_txt_path)
-
-    image_txt_path = os.path.join(outpath, 'images.txt')
-    caption_txt_path = os.path.join(outpath, 'caption.txt')
-    with open(image_txt_path, 'w') as f:
-        for i in images_path:
-            f.write(i + '\n')
-    with open(caption_txt_path, 'w') as f:
-        for i in captions:
-            f.write(i + '\n')
-
-
-def safe_dir(dir):
-    if not dir.exists():
-        dir.mkdir()
-    return dir
+if __name__ == "__main__":
+    main()

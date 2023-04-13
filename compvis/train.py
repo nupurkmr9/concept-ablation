@@ -6,7 +6,7 @@
 #
 # Adobe’s modifications are Copyright 2022 Adobe Research. All rights reserved.
 # Adobe’s modifications are licensed under the Adobe Research License. To view a copy of the license, visit
-# LICENSE.md.
+# LICENSE.
 #
 # ==========================================================================================
 #
@@ -153,7 +153,7 @@ def get_parser(**parser_kwargs):
         "--resume-from-checkpoint-custom",
         type=str,
         const=True,
-        default="assets/pretrained_models/sd-v1-4.ckpt",
+        default="../assets/pretrained_models/sd-v1-4.ckpt",
         nargs="?",
         help="resume from logdir or checkpoint in logdir",
     )

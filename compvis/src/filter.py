@@ -92,8 +92,8 @@ def filter(folder, outpath, unfiltered_path, impath, threshold=0.15,
     #         shutil.copy(each, f'{unfiltered_path}/{imbase}')
     print('++++++++++++++++++++++++++++++++++++++++++++++++')
     print('+ Filter Summary +')
-    print('+ Remained images: {len(filtered_paths)}')
-    print('+ Filtered images: {len(unfiltered_paths)}')
+    print(f'+ Remained images: {len(filtered_paths)}')
+    print(f'+ Filtered images: {len(unfiltered_paths)}')
     print('++++++++++++++++++++++++++++++++++++++++++++++++')
 
     sorted_list = sorted(list(count_dict.items()), key=lambda x: x[1], reverse=True)

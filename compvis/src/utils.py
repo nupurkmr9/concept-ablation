@@ -6,7 +6,7 @@
 #
 # Adobe’s modifications are Copyright 2022 Adobe Research. All rights reserved.
 # Adobe’s modifications are licensed under the Adobe Research License. To view a copy of the license, visit
-# LICENSE.md.
+# LICENSE.
 #
 # ==========================================================================================
 #
@@ -71,8 +71,6 @@
 # END OF TERMS AND CONDITIONS
 
 
-
-
 # Attachment A
 
 # Use Restrictions
@@ -89,98 +87,231 @@
 # - For any use intended to or which has the effect of discriminating against individuals or groups based on legally protected characteristics or categories;
 # - To provide medical advice and medical results interpretation;
 # - To generate or disseminate information for the purpose to be used for administration of justice, law enforcement, immigration or asylum processes, such as predicting an individual will commit fraud/crime commitment (e.g. by text profiling, drawing causal relationships between assertions made in documents, indiscriminate and arbitrarily-targeted use).
-model:
-  base_learning_rate: 2.0e-06
-  target: src.model.CustomDiffusion
-  params:
-    linear_start: 0.00085
-    linear_end: 0.0120
-    num_timesteps_cond: 1
-    log_every_t: 200
-    timesteps: 1000
-    first_stage_key: "image"
-    cond_stage_key: "caption"
-    image_size: 64
-    channels: 4
-    cond_stage_trainable: False   # Note: different from the one we trained before
-    freeze_model: "crossattn-kv"
-    conditioning_key: crossattn
-    monitor: val/loss_simple_ema
-    scale_factor: 0.18215
-    use_ema: False
 
-    unet_config:
-      target: ldm.modules.diffusionmodules.openaimodel.UNetModel
-      params:
-        image_size: 64 # unused
-        in_channels: 4
-        out_channels: 4
-        model_channels: 320
-        attention_resolutions: [ 4, 2, 1 ]
-        num_res_blocks: 2
-        channel_mult: [ 1, 2, 4, 4 ]
-        num_heads: 8
-        use_spatial_transformer: True
-        transformer_depth: 1
-        context_dim: 768
-        use_checkpoint: False
-        legacy: False
+import os, glob
+import torch
+import numpy as np
+from omegaconf import OmegaConf
+from PIL import Image
+from tqdm import tqdm, trange
+from einops import rearrange
+from torchvision.utils import make_grid
+from pytorch_lightning import seed_everything
+from torch import autocast
+from pathlib import Path
+from io import BytesIO
+import torch.multiprocessing as mp
 
-    first_stage_config:
-      target: ldm.models.autoencoder.AutoencoderKL
-      params:
-        embed_dim: 4
-        monitor: val/rec_loss
-        ddconfig:
-          double_z: true
-          z_channels: 4
-          resolution: 256
-          in_channels: 3
-          out_ch: 3
-          ch: 128
-          ch_mult:
-          - 1
-          - 2
-          - 4
-          - 4
-          num_res_blocks: 2
-          attn_resolutions: []
-          dropout: 0.0
-        lossconfig:
-          target: torch.nn.Identity
-
-    cond_stage_config:
-      target: ldm.modules.encoders.modules.FrozenCLIPEmbedder
-
-data:
-  target: train.DataModuleFromConfig
-  params:
-    batch_size: 4
-    num_workers: 4
-    wrap: false
-    train:
-      target: src.finetune_data.MaskBase
-      params:
-        size: 512
-    train2:
-      target: src.finetune_data.MaskBase
-      params:
-        size: 512
+from ldm.util import instantiate_from_config
+from ldm.models.diffusion.ddim import DDIMSampler
+import wandb
 
 
-lightning:
-  callbacks:
-    image_logger:
-      target: train.ImageLogger
-      params:
-        batch_frequency: 200
-        save_freq: 100
-        max_images: 8
-        increase_log_steps: False
-        wandb_log: False
-  modelcheckpoint:
-    params:
-      every_n_train_steps: 100
+def load_model_from_config(config, ckpt, verbose=False):
+    print(f"Loading model from {ckpt}")
+    pl_sd = torch.load(ckpt, map_location="cpu")
+    if "global_step" in pl_sd:
+        print(f"Global Step: {pl_sd['global_step']}")
+    sd = pl_sd["state_dict"]
+    model = instantiate_from_config(config.model)
 
-  trainer:
-    max_steps: 110
+    token_weights = sd["cond_stage_model.transformer.text_model.embeddings.token_embedding.weight"]
+    del sd["cond_stage_model.transformer.text_model.embeddings.token_embedding.weight"]
+    m, u = model.load_state_dict(sd, strict=False)
+    model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[:token_weights.shape[0]] = token_weights
+    if len(m) > 0 and verbose:
+        print("missing keys:")
+        print(m)
+    if len(u) > 0 and verbose:
+        print("unexpected keys:")
+        print(u)
+    model.eval()
+    return model
+
+
+def initialize(config, ckpt, delta_ckpt, seed=42):
+    "initialize a model and sampler given checkpoing path"
+    if delta_ckpt is not None:
+        if len(glob.glob(os.path.join(delta_ckpt.split('checkpoints')[0], "configs/*.yaml"))) > 0:
+            config = sorted(glob.glob(os.path.join(delta_ckpt.split('checkpoints')[0], "configs/*.yaml")))[-1]
+    else:
+        if len(glob.glob(
+                os.path.join(ckpt.split('checkpoints')[0], "configs/*.yaml"))) > 0:
+            config = sorted(
+                glob.glob(os.path.join(ckpt.split('checkpoints')[0], "configs/*.yaml")))[
+                -1]
+
+    seed_everything(seed)
+    config = OmegaConf.load(f"{config}")
+    model = load_model_from_config(config, f"{ckpt}")
+
+    device = torch.device('cuda')
+    model = model.to(device)
+    sampler = DDIMSampler(model)
+    return model, sampler, device
+
+
+def sample(data, model, sampler, outpath, ddim_steps=200, ddim_eta=1.0,
+                  n_iter=1, scale=6, batch_size=10, shape=(4, 64, 64),
+                  fixed_code=False, device=None, skip_save=False, skip_grid=True,
+                  metadata=True, base_count=0, n_rows=5, wandb_log=False, ckptname='base', rank=None):
+    """
+        decoupled image sampling function, including saving, visualizing and wandb logging
+    """
+    sample_path = os.path.join(outpath, f"samples")
+    if not Path(sample_path).exists():
+        Path(sample_path).mkdir()
+
+    if metadata:
+        images_path = []
+        captions = []
+    start_code = None
+    if fixed_code:
+        start_code = torch.randn([batch_size, ] + list(shape), device=device)
+    precision_scope = autocast
+    with torch.no_grad():
+        with precision_scope("cuda"):
+            with model.ema_scope():
+                for prompts in tqdm(data, desc="data"):
+                    all_samples = list()
+                    for n in trange(n_iter, desc="Sampling"):
+                        print(prompts[0])
+                        uc = None
+                        if scale != 1.0:
+                            uc = model.get_learned_conditioning(batch_size * [""])
+                        if isinstance(prompts, tuple):
+                            prompts = list(prompts)
+                        c = model.get_learned_conditioning(prompts)
+                        # shape = [opt.C, opt.H // opt.f, opt.W // opt.f]
+                        samples_ddim, _ = sampler.sample(S=ddim_steps,
+                                                         conditioning=c,
+                                                         batch_size=batch_size,
+                                                         shape=list(shape),
+                                                         verbose=False,
+                                                         unconditional_guidance_scale=scale,
+                                                         unconditional_conditioning=uc,
+                                                         eta=ddim_eta,
+                                                         x_T=start_code)
+                        # print(samples_ddim.size())
+                        x_samples_ddim = model.decode_first_stage(samples_ddim)
+                        x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
+                        x_samples_ddim = x_samples_ddim.cpu()
+
+                        if not skip_save:
+                            for x_sample, caption in zip(x_samples_ddim, prompts):
+                                x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
+                                img = Image.fromarray(x_sample.astype(np.uint8))
+                                img.save(os.path.join(sample_path, f"{base_count:05}.png"))
+                                if metadata:
+                                    images_path.append(os.path.join(sample_path, f"{base_count:05}.png"))
+                                    captions.append(caption)
+                                base_count += 1
+
+                        if not skip_grid:
+                            all_samples.append(x_samples_ddim)
+
+                    if not skip_grid:
+                        # additionally, save as grid
+                        grid = torch.stack(all_samples, 0)
+                        grid = rearrange(grid, 'n b c h w -> (n b) c h w')
+                        grid = make_grid(grid, nrow=n_rows)
+
+                        # to image
+                        grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
+                        img = Image.fromarray(grid.astype(np.uint8))
+
+                        img = img.convert('RGB')
+                        prompt_name = "".join(ch for ch in prompts[0] if ch.isalpha() or ch.isspace())
+                        prompt_name = prompt_name.replace(" ", "-")
+                        file_prompt_name = prompt_name[:60]
+                        img.save(os.path.join(outpath,
+                                              f'{file_prompt_name}_{scale}_{ddim_steps}_{ddim_eta}.jpg'),
+                                 quality=70)
+                        if wandb_log:
+                            out = BytesIO()
+                            img.save(out, format='jpeg', quality=70)
+                            img = Image.open(out)
+                            wandb.log({f'{file_prompt_name}_{scale}_{ddim_steps}_{ddim_eta}.jpg': [
+                                wandb.Image(img, caption=ckptname)]})
+
+                            out.close()
+
+    image_txt_path = ''
+    caption_txt_path = ''
+    if metadata:
+        if rank is None:
+            image_txt_path = os.path.join(outpath, 'images.txt')
+            caption_txt_path = os.path.join(outpath, 'caption.txt')
+        else:
+            image_txt_path = os.path.join(outpath, f'images{rank}.txt')
+            caption_txt_path = os.path.join(outpath, f'caption{rank}.txt')
+        with open(image_txt_path, 'w') as f:
+            for i in images_path:
+                f.write(i + '\n')
+        with open(caption_txt_path, 'w') as f:
+            for i in captions:
+                f.write(i + '\n')
+    print('++++++++++++++++++++++++++++++++++++')
+    print('+ Generation Finished ! ++++++++++++')
+    print('++++++++++++++++++++++++++++++++++++')
+    return image_txt_path, caption_txt_path
+
+
+def sample_images(data, rank, config, ckpt, delta_ckpt, outpath, base_count, ddim_steps):
+    torch.cuda.set_device(rank)
+    model, sampler, device = initialize(config, ckpt, delta_ckpt)
+    return sample(data, model, sampler, outpath, ddim_steps, base_count=base_count, rank=rank)
+
+
+def distributed_sample_images(data, ranks, config, ckpt, delta_ckpt, outpath, ddim_steps=200):
+    """
+        data        : list of batch prompts (2-dim list)
+        ranks       : list of available GPU-cards
+        config      : the config file to load model
+        ckpt        : the checkpoint path to model
+        delta_ckpt  : the checkpoint path to delta model
+        outpath     : the root folder to save images
+        ddim_steps  : the ddim steps in generation
+    """
+    process_stack = []
+    count = 0
+    size = int(np.ceil(len(data) / len(ranks)))
+    for i, local_rank in enumerate(ranks):
+        cur_data = data[i*size:(i+1)*size]
+        base_count = i*size * len(data[0])
+        process = mp.Process(target=sample_images,
+                             args=(cur_data, local_rank, config, ckpt, delta_ckpt, outpath, base_count, ddim_steps))
+        process.start()
+        process_stack.append(process)
+        count += 1
+        # wait for each process running
+
+    for process in process_stack:
+        process.join()
+    # merge metadata
+    images_path = []
+    captions = []
+    for local_rank in ranks:
+        cur_image_txt_path = os.path.join(outpath, f'images{local_rank}.txt')
+        cur_caption_txt_path = os.path.join(outpath, f'caption{local_rank}.txt')
+        with open(cur_image_txt_path, 'r') as f:
+            images_path += f.read().splitlines()
+        with open(cur_caption_txt_path, 'r') as f:
+            captions += f.read().splitlines()
+        os.remove(cur_image_txt_path)
+        os.remove(cur_caption_txt_path)
+
+    image_txt_path = os.path.join(outpath, 'images.txt')
+    caption_txt_path = os.path.join(outpath, 'caption.txt')
+    with open(image_txt_path, 'w') as f:
+        for i in images_path:
+            f.write(i + '\n')
+    with open(caption_txt_path, 'w') as f:
+        for i in captions:
+            f.write(i + '\n')
+
+
+def safe_dir(dir):
+    if not dir.exists():
+        dir.mkdir()
+    return dir
