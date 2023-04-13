@@ -6,6 +6,7 @@ from PIL import Image
 from tqdm import tqdm
 from itertools import islice
 from pathlib import Path
+import pandas as pd
 import json
 import sklearn.preprocessing
 import warnings
@@ -15,8 +16,8 @@ import torch.multiprocessing as mp
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
 import clip
 from cleanfid import fid
+
 from ldm.util import instantiate_from_config
-import pandas as pd
 from src import utils
 from src.utils import safe_dir
 
@@ -353,7 +354,7 @@ def parse_args():
     parser.add_argument("--caption_target", type=str, required=True, help="the target for ablated concept")
     parser.add_argument("--eval_json", type=str, default='../assets/eval.json',
                         help="the json file that stores metadata for evaluation")
-    parser.add_argument("--numgen", type=int, default=50,
+    parser.add_argument("--numgen", type=int, default=200,
                         help="number of images for each hard negative (x4 for target and general).")
     parser.add_argument("--gpus", type=str, default='0,', help="number of gpus")
     parser.add_argument("--config", type=str, default="configs/finetune.yaml",

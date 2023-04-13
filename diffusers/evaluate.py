@@ -11,14 +11,12 @@ import json
 import sklearn.preprocessing
 import warnings
 from packaging import version
-import json
 import torch
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
 import clip
 from cleanfid import fid
 from diffusers import DDIMScheduler
 from accelerate import Accelerator
-from torch.utils.data import Dataset
 
 from model_pipeline import CustomDiffusionPipeline
 from utils import safe_dir, PromptDataset
