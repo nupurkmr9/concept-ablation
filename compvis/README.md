@@ -124,6 +124,7 @@ caption target:{
 #### Evaluation of Ablating Memorized Image
 
 ```
-python sample.py --ckpt {} --prompt "New Orleans House Galaxy Case" --ddim_steps 50 --outdir samples --n_copies 200 
-python src/filter.py 
+python sample.py --ckpt {} --prompt "New Orleans House Galaxy Case" --ddim_steps 50 --outdir samples_eval --n_copies 200 
+python src/filter.py --folder {} --impath ../assets/mem_images/orleans.png outpath {}
 ```
+where `folder` is the path to saved images, i.e., `{ckpt-path}/samples_eval/` and outpath is the folder to save the images which are different than the memorized image.
