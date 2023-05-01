@@ -377,7 +377,7 @@ class CustomDiffusion(LatentDiffusion):
 
             if os.path.isdir(self.trainer.checkpoint_callback.dirpath):
                 # ntokens = len(self.cond_stage_model.modifier_token)
-                torch.save({'embed': self.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight}, os.path.join(
+                torch.save({'state_dict': {'embed': self.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight}}, os.path.join(
                     self.trainer.checkpoint_callback.dirpath, f'delta_{self.current_epoch}_{self.global_step}.ckpt'))
 
     @torch.no_grad()

@@ -1,9 +1,10 @@
-import numpy as np
 from pathlib import Path
-from src.filter import filter
-from src import utils
-from src.utils import safe_dir
+
+import numpy as np
 import torch.multiprocessing as mp
+from src import utils
+from src.filter import filter
+from src.utils import safe_dir
 
 
 def preprocess(opt, prompts, outdir, concept_type, ranks):
@@ -16,7 +17,8 @@ def preprocess(opt, prompts, outdir, concept_type, ranks):
         with open(prompts, "r") as f:
             data = f.read().splitlines()
             prompt_size = len(data)
-            data = np.array([5 * [prompt] for prompt in data]).reshape(-1, opt.n_samples).tolist()
+            data = np.array([5 * [prompt] for prompt in data]
+                            ).reshape(-1, opt.n_samples).tolist()
         # check generation
         check_dir = safe_dir(Path(outdir) / 'check')
         check_sample_path = safe_dir(check_dir / 'samples')
@@ -50,7 +52,8 @@ def preprocess(opt, prompts, outdir, concept_type, ranks):
         # generate new images
         assert opt.train_size % len(anchor_prompts) == 0
         n_repeat = opt.train_size // len(anchor_prompts)
-        anchor_data = np.array([n_repeat * [prompt] for prompt in anchor_prompts]).reshape(-1, opt.n_samples).tolist()
+        anchor_data = np.array(
+            [n_repeat * [prompt] for prompt in anchor_prompts]).reshape(-1, opt.n_samples).tolist()
         anchor_dir = safe_dir(Path(outdir) / 'anchor')
         anchor_sample_path = safe_dir(anchor_dir / 'samples')
         if len(list(anchor_sample_path.glob('*'))) != opt.train_size:
@@ -62,7 +65,8 @@ def preprocess(opt, prompts, outdir, concept_type, ranks):
         unfiltered_anchor_dir = safe_dir(Path(outdir) / 'un_filtered_anchor')
         if len(list(unfiltered_anchor_dir.glob('*'))) == 0:
             print('Final Filtering!')
-            filter(str(anchor_dir), str(outdir), str(unfiltered_anchor_dir), opt.mem_impath)
+            filter(str(anchor_dir), str(outdir), str(
+                unfiltered_anchor_dir), opt.mem_impath)
 
         # update "target caption"
         if opt.caption_target is not None:
@@ -78,7 +82,8 @@ def preprocess(opt, prompts, outdir, concept_type, ranks):
             data = f.read().splitlines()
             assert opt.train_size % len(data) == 0
             n_repeat = opt.train_size // len(data)
-            data = np.array([n_repeat * [prompt] for prompt in data]).reshape(-1, opt.n_samples).tolist()
+            data = np.array([n_repeat * [prompt] for prompt in data]
+                            ).reshape(-1, opt.n_samples).tolist()
         # check integrity
         sample_path = safe_dir(outdir / 'samples')
         if not sample_path.exists() or not len(list(sample_path.glob('*'))) == opt.train_size:

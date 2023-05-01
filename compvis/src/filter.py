@@ -1,9 +1,10 @@
 import argparse
 import os
-from pathlib import Path
-from PIL import Image
 import shutil
+from pathlib import Path
+
 import torch
+from PIL import Image
 from torchvision import transforms
 
 normalize = transforms.Normalize(
@@ -26,15 +27,21 @@ def isimage(path):
         return True
 
 
-model = torch.jit.load("assets/pretrained_models/sscd_imagenet_mixup.torchscript.pt")
+model = torch.jit.load(
+    "../assets/pretrained_models/sscd_imagenet_mixup.torchscript.pt")
 
 
 def filter(folder, outpath, unfiltered_path, impath, threshold=0.15,
            image_threshold=0.5, anchor_size=10, target_size=3, return_score=False):
-    with open(f'{folder}/images.txt', "r") as f:
-        image_paths = f.read().splitlines()
-    with open(f'{folder}/caption.txt', "r") as f:
-        image_captions = f.read().splitlines()
+    if (Path(folder) / 'images.txt').exists():
+        with open(f'{folder}/images.txt', "r") as f:
+            image_paths = f.read().splitlines()
+        with open(f'{folder}/caption.txt', "r") as f:
+            image_captions = f.read().splitlines()
+    else:
+        image_paths = [os.path.join(str(folder), file_path)
+                       for file_path in os.listdir(folder) if isimage(file_path)]
+        image_captions = ["None" for _ in range(len(image_paths))]
 
     batch = small_288(Image.open(impath).convert('RGB')).unsqueeze(0)
     embedding_target = model(batch)[0, :]
@@ -63,7 +70,8 @@ def filter(folder, outpath, unfiltered_path, impath, threshold=0.15,
 
     # only return score
     if return_score:
-        score = len(unfiltered_paths) / (len(unfiltered_paths)+len(filtered_paths))
+        score = len(unfiltered_paths) / \
+            (len(unfiltered_paths)+len(filtered_paths))
         print(len(unfiltered_paths))
         print(len(unfiltered_paths)+len(filtered_paths))
         print(f"ratio: {score}")
@@ -96,7 +104,8 @@ def filter(folder, outpath, unfiltered_path, impath, threshold=0.15,
     print(f'+ Filtered images: {len(unfiltered_paths)}')
     print('++++++++++++++++++++++++++++++++++++++++++++++++')
 
-    sorted_list = sorted(list(count_dict.items()), key=lambda x: x[1], reverse=True)
+    sorted_list = sorted(list(count_dict.items()),
+                         key=lambda x: x[1], reverse=True)
     anchor_prompts = [c[0] for c in sorted_list[:anchor_size]]
     target_prompts = [c[0] for c in sorted_list[-target_size:]]
     return anchor_prompts, target_prompts
@@ -117,4 +126,5 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    filter(args.folder, args.outpath, args.outpath, args.impath, args.threshold, return_score=True)
+    filter(args.folder, args.outpath, args.outpath,
+           args.impath, args.threshold, return_score=True)

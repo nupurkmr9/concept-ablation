@@ -587,18 +587,16 @@ class SetupCallback(Callback):
 class ImageLogger(Callback):
     def __init__(self, batch_frequency, max_images, save_freq=100, clamp=True, increase_log_steps=True,
                  rescale=True, disabled=False, log_on_batch_idx=False, log_first_step=False,
-                 log_images_kwargs=None, wandb_log=False):
+                 log_images_kwargs=None):
         super().__init__()
         self.rescale = rescale
         self.batch_freq = batch_frequency
         self.max_images = max_images
         self.save_freq = save_freq
         # self.logger_log_images = {
-        #     pl.loggers.TestTubeLogger: self._testtube,
+        #     pl.loggers.TensorBoardLogger: self._tb,
+        #     pl.loggers.WandbLogger: self._wandb,
         # }
-        self.logger_log_images = {
-            pl.loggers.WandbLogger: self._testtube,
-        }
 
         self.log_steps = [2 ** n for n in range(int(np.log2(self.batch_freq)) + 1)]
         if not increase_log_steps:
@@ -608,29 +606,6 @@ class ImageLogger(Callback):
         self.log_on_batch_idx = log_on_batch_idx
         self.log_images_kwargs = log_images_kwargs if log_images_kwargs else {}
         self.log_first_step = log_first_step
-        # self.wandb_log = wandb_log
-
-    @rank_zero_only
-    def _testtube(self, pl_module, images, batch_idx, split):
-        for k in images:
-            grid = torchvision.utils.make_grid(images[k])
-            grid = (grid + 1.0) / 2.0  # -1,1 -> 0,1; c,h,w
-            # grid = grid.transpose(0, 1).transpose(1, 2).squeeze(-1)
-            # grid = grid.numpy()
-            # grid = (grid * 255).astype(np.uint8)
-            # grid = Image.fromarray(grid)
-            filename = "{}_{}_gs-{:06}_e-{:06}_b-{:06}.png".format(
-                split,
-                k,
-                pl_module.global_step,
-                pl_module.current_epoch,
-                batch_idx)
-
-            print(filename, images[k][0].size(), batch_idx)
-            if pl_module.global_step == 1:
-                print("logging to wandb")
-                pl_module.logger.log_image(
-                    key=f'samples_{filename}', images=[img for img in images[k]])
 
     @rank_zero_only
     def log_local(self, logger, save_dir, split, images,
@@ -652,12 +627,12 @@ class ImageLogger(Callback):
             os.makedirs(os.path.split(path)[0], exist_ok=True)
             im = Image.fromarray(grid)
             im.save(path)
-            name = path.split('/')[-1]
-            logger.log_image(
-                key=f'{split}_{k}', images=[path], step=global_step)
-
-            # if self.wandb_log:
-            #     wandb.log({f'{name}': [wandb.Image(im)]})
+            if isinstance(logger, pl.loggers.TensorBoardLogger):
+                logger.experiment.add_image(
+                    f'{split}_{k}', torchvision.utils.make_grid(images[k], nrow=4), global_step)
+            else:
+                logger.log_image(
+                    key=f'{split}_{k}', images=[path], step=global_step)
 
     def log_img(self, pl_module, batch, batch_idx, split="train"):
         check_idx = batch_idx if self.log_on_batch_idx else pl_module.global_step
@@ -665,7 +640,6 @@ class ImageLogger(Callback):
                 hasattr(pl_module, "log_images") and
                 callable(pl_module.log_images) and
                 self.max_images > 0):
-            logger = type(pl_module.logger)
 
             is_train = pl_module.training
             if is_train:
@@ -697,12 +671,9 @@ class ImageLogger(Callback):
             self.log_local(pl_module.logger, pl_module.logger.save_dir, split, images,
                            pl_module.global_step, pl_module.current_epoch, batch_idx)
 
-            # logger_log_images = self.logger_log_images.get(logger, lambda *args, **kwargs: None)
-            # logger_log_images(pl_module, images, pl_module.global_step, split)
             if isinstance(batch, list):
                 self.log_local(pl_module.logger, pl_module.logger.save_dir, split + "_reg", images1,
                                pl_module.global_step, pl_module.current_epoch, batch_idx)
-                # logger_log_images(pl_module, images1, pl_module.global_step, split+ "reg")
 
             if is_train:
                 pl_module.train()
@@ -757,12 +728,9 @@ class CUDACallback(Callback):
             grads_text_encoder = pl_module.cond_stage_model.transformer.get_input_embeddings().weight.grad
             index_grads_to_zero = torch.arange(len(pl_module.cond_stage_model.tokenizer)) != \
                 pl_module.cond_stage_model.modifier_token_id[0]
-            print((index_grads_to_zero * 1).sum())
             for i in range(len(pl_module.cond_stage_model.modifier_token_id[1:])):
                 index_grads_to_zero = index_grads_to_zero & (torch.arange(len(pl_module.cond_stage_model.tokenizer)) !=
                                                              pl_module.cond_stage_model.modifier_token_id[i])
-                print((index_grads_to_zero * 1).sum())
-            print((index_grads_to_zero * 1).sum(), pl_module.cond_stage_model.modifier_token_id)
             grads_text_encoder.data[index_grads_to_zero, :] = grads_text_encoder.data[index_grads_to_zero, :].fill_(0)
 
 
@@ -895,6 +863,8 @@ if __name__ == "__main__":
             trainer_config["strategy"] = "ddp"
             print(f"Running on GPUs {gpuinfo}")
             cpu = False
+        if opt.train_max_steps is not None:
+            trainer_config.max_steps = opt.train_max_steps
         trainer_opt = argparse.Namespace(**trainer_config)
         lightning_config.trainer = trainer_config
 
@@ -942,6 +912,8 @@ if __name__ == "__main__":
             config.model.params.cond_stage_trainable = False
             config.model.params.freeze_model = "crossattn-kv"
         else:
+            lightning_config.modelcheckpoint.params.every_n_train_steps = lightning_config.callbacks.image_logger.params.save_freq
+            lightning_config.callbacks.image_logger.params.save_freq = 10000
             if opt.concept_type == 'memorization':
                 print("embedding finetuning is not supported for memorization")
                 raise NotImplementedError
@@ -955,8 +927,10 @@ if __name__ == "__main__":
         if opt.base_lr is not None:
             config.model.base_learning_rate = opt.base_lr
         if opt.save_freq is not None:
-            lightning_config.modelcheckpoint.params.every_n_train_steps = opt.save_freq
-            lightning_config.callbacks.image_logger.params.save_freq = opt.save_freq
+            if opt.parameter_group == 'embedding':
+                lightning_config.modelcheckpoint.params.every_n_train_steps = opt.save_freq
+            else:
+                lightning_config.callbacks.image_logger.params.save_freq = opt.save_freq
         if opt.image_logging_freq is not None:
             lightning_config.callbacks.image_logger.params.batch_frequency = opt.image_logging_freq
         if opt.train_max_steps is not None:
@@ -992,22 +966,18 @@ if __name__ == "__main__":
         if opt.delta_ckpt is not None:
             st = torch.load(opt.delta_ckpt)
             embed = None
-            if 'embed' in st:
-                st['state_dict']['embed'] = st['embed']
             if 'embed' in st['state_dict']:
                 embed = st['state_dict']['embed'].reshape(-1, 768)
-            if 'state_dict' in st:
-                st = st['state_dict']
             print("restroting from delta model from previous version")
-            st1 = model.state_dict()
-            for each in st1.keys():
-                if each in st.keys():
-                    print("found common", each)
-            model.load_state_dict(st, strict=False)
+            # st1 = model.state_dict()
+            # for each in st1.keys():
+            #     if each in st['state_dict'].keys():
+            #         print("found common", each)
+            model.load_state_dict(st['state_dict'], strict=False)
             if embed is not None:
-                print("restoring embedding")
+                print(f"restoring embedding. Embedding shape: {embed.shape[0]}")
                 model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[
-                    token_weights.shape[0]: token_weights.shape[0] + embed.shape[0]] = embed
+                    -embed.shape[0]:] = embed
 
         # trainer and callbacks
         trainer_kwargs = dict()
@@ -1026,10 +996,10 @@ if __name__ == "__main__":
                     "entity": opt.wandb_entity,
                 }
             },
-            "testtube": {
-                "target": "pytorch_lightning.loggers.CSVLogger",
+            "tensorboard": {
+                "target": "pytorch_lightning.loggers.TensorBoardLogger",
                 "params": {
-                    "name": "testtube",
+                    "name": "tensorboard",
                     "save_dir": logdir,
                 }
             },
@@ -1038,7 +1008,7 @@ if __name__ == "__main__":
         if opt.wandb_entity != "":
             default_logger_cfg = default_logger_cfgs["wandb"]
         else:
-            default_logger_cfg = default_logger_cfgs["testtube"]
+            default_logger_cfg = default_logger_cfgs["tensorboard"]
         if "logger" in lightning_config:
             logger_cfg = lightning_config.logger
         else:
@@ -1061,7 +1031,6 @@ if __name__ == "__main__":
             print(f"Monitoring {model.monitor} as checkpoint metric.")
             default_modelckpt_cfg["params"]["monitor"] = model.monitor
             default_modelckpt_cfg["params"]["save_top_k"] = -1
-            # default_modelckpt_cfg["params"]["every_n_epochs"] = 10000
 
         if "modelcheckpoint" in lightning_config:
             modelckpt_cfg = lightning_config.modelcheckpoint

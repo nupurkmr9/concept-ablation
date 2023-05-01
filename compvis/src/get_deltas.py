@@ -16,7 +16,7 @@ def main(path, newtoken=0):
             elif '_' in files:
                 epoch_number = files.split('/')[-1].split('.ckpt')[0]
 
-            st = torch.load(files)["state_dict"]
+            st = torch.load(files, map_location='cuda')["state_dict"]
             if len(layers) == 0:
                 for key in list(st.keys()):
                     if 'attn2.to_k' in key or 'attn2.to_v' in key:
@@ -25,7 +25,7 @@ def main(path, newtoken=0):
             st_delta = {'state_dict': {}}
             for each in layers:
                 st_delta['state_dict'][each] = st[each].clone()
-            print('/'.join(files.split('/')[:-1]) + f'/delta_epoch={epoch_number}.ckpt')
+            print('/'.join(files.split('/')[:-1]) + f'/delta_{epoch_number}.ckpt')
 
             num_tokens = st['cond_stage_model.transformer.text_model.embeddings.token_embedding.weight'].shape[0]
 
@@ -34,7 +34,7 @@ def main(path, newtoken=0):
                 st_delta['state_dict']['embed'] = st['cond_stage_model.transformer.text_model.embeddings.token_embedding.weight'][-newtoken:].clone()
                 print(st_delta['state_dict']['embed'].shape, num_tokens)
 
-            torch.save(st_delta, '/'.join(files.split('/')[:-1]) + f'/delta_epoch={epoch_number}.ckpt')
+            torch.save(st_delta, '/'.join(files.split('/')[:-1]) + f'/delta_{epoch_number}.ckpt')
             os.remove(files)
 
 

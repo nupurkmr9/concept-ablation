@@ -68,14 +68,16 @@ accelerate launch train.py \
           --parameter_group cross-attn \
           --enable_xformers_memory_efficient_attention 
 ```
+If you already have a set of anchor concept prompts and dont require chatGPT to generate random prompts, you can provide the the path to the text file in `class_prompt`. 
 When training for `caption_target="grumpy cat"`, we also add `with_prior_preservation`. 
+
 
 **Ablating Memorized Image**
 ```
 accelerate config
 export MODEL_NAME="CompVis/stable-diffusion-v1-4"
-export OPENAI_API_KEY="provide-your-api-key"
 export OUTPUT_DIR="logs_ablation/orleans_galaxy_case"
+export OPENAI_API_KEY="provide-your-api-key"
 
 ## launch training script (2 GPUs recommended, if 1 GPU increase --max_train_steps to 400 or increase --train_batch_size=4)
 
@@ -90,8 +92,8 @@ accelerate launch train.py \
           --concept_type memorization \
           --resolution=512  \
           --train_batch_size=2  \
-          --learning_rate=2e-6  \
-          --max_train_steps=200 \
+          --learning_rate=5e-7  \
+          --max_train_steps=400 \
           --scale_lr --hflip \
           --parameter_group full-weight \
           --enable_xformers_memory_efficient_attention 
@@ -128,7 +130,7 @@ import torch
 
 pipe = CustomDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", torch_dtype=torch.float16).to("cuda")
 pipe.load_model('logs_ablation/vangogh/delta.bin')
-image = pipe("painitng of a house in the style of van gogh", num_inference_steps=50, guidance_scale=6., eta=1.).images[0]
+image = pipe("painting of a house in the style of van gogh", num_inference_steps=50, guidance_scale=6., eta=1.).images[0]
 
 image.save("vangogh.png")
 ```
@@ -142,12 +144,17 @@ It consists of two separate stages, **generation** and **evaluation**
 **Generation Stage**
 
 ```
+#style
+accelerate launch evaluate.py --root logs_ablation/vangogh/ --filter delta*.bin --concept_type style --caption_target "van gogh" --eval_json ../assets/eval.json 
+
+#instance
 accelerate launch evaluate.py --root logs_ablation/r2d2/ --filter delta*.bin --concept_type object --caption_target "r2d2" --eval_json ../assets/eval.json 
 ```
 
 * `root`: the location to root training folder which contains a folder called `checkpoints`
-* `filter`: a regular expression to filter the checkpoint to evaluate (default: step_*.ckpt)
+* `filter`: a regular expression to filter the checkpoint to evaluate (default: delta*.bin)
 
+* `n_samples`: batch-size for sampling images
 * `concept_type`: choose from ['style', 'object', 'memorization']
 * `caption_target`: the target for ablated concept
 * `outpkl`: the location to save evaluation results (default: metrics/evaluation.pkl)
@@ -157,6 +164,10 @@ accelerate launch evaluate.py --root logs_ablation/r2d2/ --filter delta*.bin --c
 **Evaluation Stage**
 
 ```
+#style
+accelerate launch evaluate.py --root logs_ablation/vangogh/ --filter delta*.bin --concept_type style --caption_target "van gogh" --eval_json ../assets/eval.json --eval_stage
+
+#instance
 accelerate launch evaluate.py --root logs_ablation/r2d2/ --filter delta*.bin --concept_type object --caption_target "r2d2" --eval_json ../assets/eval.json --eval_stage
 ```
 the same script as previous step with additional parameters: `--eval_stage`
@@ -165,6 +176,8 @@ the same script as previous step with additional parameters: `--eval_stage`
 
 For customized concepts, a user has to manually specify a **new entry** in eval_json file and put that to the correct concept type.
 Hard negative categories are those that are similar to the ablated concept but should be preserved in the fine-tuned model.
+Also create a `anchor_concept_eval.txt` file in `../assets/eval_prompts/` with prompts to be used for evaluation for instance ablation. 
+In case of style ablation, provide the `<style-name>_eval.txt` with prompts for each of the target and surrounding styles. 
 ````
 caption target:{
 	target: caption target 
@@ -186,7 +199,7 @@ from utils import filter, safe_dir
 import torch
 from pathlib import Path
 
-pipe = CustomDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", torch_dtype=torch.float16).to("cuda")
+pipe = CustomDiffusionPipeline.from_pretrained("CompVis/stable-diffusion-v1-4", torch_dtype=torch.float16, safety_checker=None,).to("cuda")
 pipe.load_model('logs_ablation/orleans_galaxy_case/delta.bin')
 
 #generate 200 images using the given caption that leads to memorized image.

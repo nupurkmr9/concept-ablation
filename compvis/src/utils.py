@@ -88,23 +88,24 @@
 # - To provide medical advice and medical results interpretation;
 # - To generate or disseminate information for the purpose to be used for administration of justice, law enforcement, immigration or asylum processes, such as predicting an individual will commit fraud/crime commitment (e.g. by text profiling, drawing causal relationships between assertions made in documents, indiscriminate and arbitrarily-targeted use).
 
-import os, glob
-import torch
+import glob
+import os
+from io import BytesIO
+from pathlib import Path
+
 import numpy as np
+import torch
+import torch.multiprocessing as mp
+import wandb
+from einops import rearrange
+from ldm.models.diffusion.ddim import DDIMSampler
+from ldm.util import instantiate_from_config
 from omegaconf import OmegaConf
 from PIL import Image
-from tqdm import tqdm, trange
-from einops import rearrange
-from torchvision.utils import make_grid
 from pytorch_lightning import seed_everything
 from torch import autocast
-from pathlib import Path
-from io import BytesIO
-import torch.multiprocessing as mp
-
-from ldm.util import instantiate_from_config
-from ldm.models.diffusion.ddim import DDIMSampler
-import wandb
+from torchvision.utils import make_grid
+from tqdm import tqdm, trange
 
 
 def load_model_from_config(config, ckpt, verbose=False):
@@ -118,7 +119,8 @@ def load_model_from_config(config, ckpt, verbose=False):
     token_weights = sd["cond_stage_model.transformer.text_model.embeddings.token_embedding.weight"]
     del sd["cond_stage_model.transformer.text_model.embeddings.token_embedding.weight"]
     m, u = model.load_state_dict(sd, strict=False)
-    model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[:token_weights.shape[0]] = token_weights
+    model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[
+        :token_weights.shape[0]] = token_weights
     if len(m) > 0 and verbose:
         print("missing keys:")
         print(m)
@@ -133,7 +135,8 @@ def initialize(config, ckpt, delta_ckpt, seed=42):
     "initialize a model and sampler given checkpoing path"
     if delta_ckpt is not None:
         if len(glob.glob(os.path.join(delta_ckpt.split('checkpoints')[0], "configs/*.yaml"))) > 0:
-            config = sorted(glob.glob(os.path.join(delta_ckpt.split('checkpoints')[0], "configs/*.yaml")))[-1]
+            config = sorted(glob.glob(os.path.join(
+                delta_ckpt.split('checkpoints')[0], "configs/*.yaml")))[-1]
     else:
         if len(glob.glob(
                 os.path.join(ckpt.split('checkpoints')[0], "configs/*.yaml"))) > 0:
@@ -144,6 +147,21 @@ def initialize(config, ckpt, delta_ckpt, seed=42):
     seed_everything(seed)
     config = OmegaConf.load(f"{config}")
     model = load_model_from_config(config, f"{ckpt}")
+    if delta_ckpt is not None:
+        delta_st = torch.load(delta_ckpt)
+        embed = None
+        if 'embed' in delta_st:
+            delta_st['state_dict'] = {}
+            delta_st['state_dict']['embed'] = delta_st['embed']
+        if 'embed' in delta_st['state_dict']:
+            embed = delta_st['state_dict']['embed'].reshape(-1, 768)
+            del delta_st['state_dict']['embed']
+            print(embed.shape)
+        model.load_state_dict(delta_st['state_dict'], strict=False)
+        if embed is not None:
+            print(f"restoring embedding. Embedding shape: {embed.shape[0]}")
+            model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[
+                -embed.shape[0]:] = embed
 
     device = torch.device('cuda')
     model = model.to(device)
@@ -152,9 +170,9 @@ def initialize(config, ckpt, delta_ckpt, seed=42):
 
 
 def sample(data, model, sampler, outpath, ddim_steps=200, ddim_eta=1.0,
-                  n_iter=1, scale=6, batch_size=10, shape=(4, 64, 64),
-                  fixed_code=False, device=None, skip_save=False, skip_grid=True,
-                  metadata=True, base_count=0, n_rows=5, wandb_log=False, ckptname='base', rank=None):
+           n_iter=1, scale=6, batch_size=10, shape=(4, 64, 64),
+           fixed_code=False, device=None, skip_save=False, skip_grid=True,
+           metadata=True, base_count=0, n_rows=5, wandb_log=False, ckptname='base', rank=None):
     """
         decoupled image sampling function, including saving, visualizing and wandb logging
     """
@@ -178,7 +196,8 @@ def sample(data, model, sampler, outpath, ddim_steps=200, ddim_eta=1.0,
                         print(prompts[0])
                         uc = None
                         if scale != 1.0:
-                            uc = model.get_learned_conditioning(batch_size * [""])
+                            uc = model.get_learned_conditioning(
+                                batch_size * [""])
                         if isinstance(prompts, tuple):
                             prompts = list(prompts)
                         c = model.get_learned_conditioning(prompts)
@@ -194,16 +213,22 @@ def sample(data, model, sampler, outpath, ddim_steps=200, ddim_eta=1.0,
                                                          x_T=start_code)
                         # print(samples_ddim.size())
                         x_samples_ddim = model.decode_first_stage(samples_ddim)
-                        x_samples_ddim = torch.clamp((x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
+                        x_samples_ddim = torch.clamp(
+                            (x_samples_ddim + 1.0) / 2.0, min=0.0, max=1.0)
                         x_samples_ddim = x_samples_ddim.cpu()
 
                         if not skip_save:
                             for x_sample, caption in zip(x_samples_ddim, prompts):
-                                x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-                                img = Image.fromarray(x_sample.astype(np.uint8))
-                                img.save(os.path.join(sample_path, f"{base_count:05}.png"))
+                                x_sample = 255. * \
+                                    rearrange(x_sample.cpu().numpy(),
+                                              'c h w -> h w c')
+                                img = Image.fromarray(
+                                    x_sample.astype(np.uint8))
+                                img.save(os.path.join(
+                                    sample_path, f"{base_count:05}.png"))
                                 if metadata:
-                                    images_path.append(os.path.join(sample_path, f"{base_count:05}.png"))
+                                    images_path.append(os.path.join(
+                                        sample_path, f"{base_count:05}.png"))
                                     captions.append(caption)
                                 base_count += 1
 
@@ -217,11 +242,13 @@ def sample(data, model, sampler, outpath, ddim_steps=200, ddim_eta=1.0,
                         grid = make_grid(grid, nrow=n_rows)
 
                         # to image
-                        grid = 255. * rearrange(grid, 'c h w -> h w c').cpu().numpy()
+                        grid = 255. * \
+                            rearrange(grid, 'c h w -> h w c').cpu().numpy()
                         img = Image.fromarray(grid.astype(np.uint8))
 
                         img = img.convert('RGB')
-                        prompt_name = "".join(ch for ch in prompts[0] if ch.isalpha() or ch.isspace())
+                        prompt_name = "".join(
+                            ch for ch in prompts[0] if ch.isalpha() or ch.isspace())
                         prompt_name = prompt_name.replace(" ", "-")
                         file_prompt_name = prompt_name[:60]
                         img.save(os.path.join(outpath,
@@ -293,7 +320,8 @@ def distributed_sample_images(data, ranks, config, ckpt, delta_ckpt, outpath, dd
     captions = []
     for local_rank in ranks:
         cur_image_txt_path = os.path.join(outpath, f'images{local_rank}.txt')
-        cur_caption_txt_path = os.path.join(outpath, f'caption{local_rank}.txt')
+        cur_caption_txt_path = os.path.join(
+            outpath, f'caption{local_rank}.txt')
         with open(cur_image_txt_path, 'r') as f:
             images_path += f.read().splitlines()
         with open(cur_caption_txt_path, 'r') as f:

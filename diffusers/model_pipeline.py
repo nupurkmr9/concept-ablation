@@ -1,14 +1,16 @@
 from typing import Callable, Optional
-import torch
-from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
-from accelerate.logging import get_logger
 
+import torch
+from accelerate.logging import get_logger
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
-from diffusers.schedulers.scheduling_utils import SchedulerMixin
-from diffusers.pipelines.stable_diffusion import StableDiffusionPipeline
-from diffusers.pipelines.stable_diffusion.safety_checker import StableDiffusionSafetyChecker
 from diffusers.models.cross_attention import CrossAttention
+from diffusers.pipelines.stable_diffusion import StableDiffusionPipeline
+from diffusers.pipelines.stable_diffusion.safety_checker import (
+    StableDiffusionSafetyChecker,
+)
+from diffusers.schedulers.scheduling_utils import SchedulerMixin
 from diffusers.utils.import_utils import is_xformers_available
+from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
 
 if is_xformers_available():
     import xformers
@@ -55,7 +57,8 @@ def set_use_memory_efficient_attention_xformers(
             except Exception as e:
                 raise e
 
-        processor = CustomDiffusionXFormersAttnProcessor(attention_op=attention_op)
+        processor = CustomDiffusionXFormersAttnProcessor(
+            attention_op=attention_op)
     else:
         processor = CustomDiffusionAttnProcessor()
 
@@ -71,7 +74,8 @@ class CustomDiffusionAttnProcessor:
         attention_mask=None,
     ):
         batch_size, sequence_length, _ = hidden_states.shape
-        attention_mask = attn.prepare_attention_mask(attention_mask, sequence_length, batch_size)
+        attention_mask = attn.prepare_attention_mask(
+            attention_mask, sequence_length, batch_size)
         query = attn.to_q(hidden_states)
 
         crossattn = False
@@ -113,7 +117,8 @@ class CustomDiffusionXFormersAttnProcessor:
     def __call__(self, attn: CrossAttention, hidden_states, encoder_hidden_states=None, attention_mask=None):
         batch_size, sequence_length, _ = hidden_states.shape
 
-        attention_mask = attn.prepare_attention_mask(attention_mask, sequence_length, batch_size)
+        attention_mask = attn.prepare_attention_mask(
+            attention_mask, sequence_length, batch_size)
 
         query = attn.to_q(hidden_states)
 
@@ -177,7 +182,8 @@ class CustomDiffusionPipeline(StableDiffusionPipeline):
             Model that extracts features from generated images to be used as inputs for the `safety_checker`.
         modifier_token_id: list of id of tokens related to the target concept that are modified when ablated.
     """
-    _optional_components = ["safety_checker", "feature_extractor", "modifier_token_id"]
+    _optional_components = ["safety_checker",
+                            "feature_extractor", "modifier_token_id"]
 
     def __init__(
         self,
@@ -200,17 +206,6 @@ class CustomDiffusionPipeline(StableDiffusionPipeline):
                          feature_extractor,
                          requires_safety_checker)
 
-        # change attn class
-        def change_attn(unet):
-            for layer in unet.children():
-                if type(layer) == CrossAttention:
-                    bound_method = set_use_memory_efficient_attention_xformers.__get__(layer, layer.__class__)
-                    setattr(layer, 'set_use_memory_efficient_attention_xformers', bound_method)
-                else:
-                    change_attn(layer)
-
-        change_attn(self.unet)
-        self.unet.set_attn_processor(CustomDiffusionAttnProcessor())
         self.modifier_token_id = modifier_token_id
 
     def save_pretrained(self, save_path, parameter_group="cross-attn", all=False):

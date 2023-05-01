@@ -26,17 +26,17 @@ python sample.py --ckpt assets/pretrained_models/sd-v1-4.ckpt --delta_ckpt {down
 **Ablating Style**
 
 ```
-python train.py -t --gpus 0,1 --concept_type style --caption_target  "van gogh" --prompts assets/finetune_prompts/painting.txt --name "vangogh_painting" --train_size 200
+python train.py -t --gpus 0,1 --concept_type style --caption_target  "van gogh" --prompts ../assets/finetune_prompts/painting.txt --name "vangogh_painting"  --train_size 200
 ```
 
 **Ablating Instance**
 ```
-python train.py -t --gpus 0,1 --concept_type object --caption_target  "cat+grumpy cat" --prompts assets/finetune_prompts/cat.txt --name "grumpy_cat" --train_size 200
+python train.py -t --gpus 0,1 --concept_type object --caption_target  "cat+grumpy cat" --prompts ../assets/finetune_prompts/cat.txt --name "grumpy_cat" --train_size 200
 ```
 
 **Ablating Memorized Image**
 ```
-python train.py -t --gpus 0,1 --concept_type memorization --caption_target  "New Orleans House Galaxy Case" --prompts assets/finetune_prompts/orleans_mem.txt --name "orleans_galaxy_case" --mem_impath assets/mem_images/orleans.png --train_size 200
+python train.py -t --gpus 0,1 --concept_type memorization --caption_target  "New Orleans House Galaxy Case" --prompts ../assets/finetune_prompts/orleans_mem.txt --name "orleans_galaxy_case" --mem_impath assets/mem_images/orleans.png  --train_size 200
 ```
 
 For each concept ablation, we first generate training images which can take some time. To ablate any new concept, we need to provide the following required details and modify the above training commands accordingly:
@@ -89,6 +89,7 @@ python evaluate.py --gpu 0,1 --root {} --filter {} --concept_type {} --caption_t
 * `root`: the location to root training folder which contains a folder called `checkpoints`
 * `filter`: a regular expression to filter the checkpoint to evaluate (default: step_*.ckpt)
 
+* `n_samples`: batch-size for sampling images
 * `concept_type`: choose from ['style', 'object', 'memorization']
 * `caption_target`: the target for ablated concept
 * `outpkl`: the location to save evaluation results (default: metrics/evaluation.pkl)
@@ -107,6 +108,8 @@ the same script with additional parameters: `--eval_stage`
 
 For customized concepts, a user has to manually specify a **new entry** in eval_json file and put that to the correct concept type.
 Hard negative categories are those that are similar to the ablated concept but should be preserved in the fine-tuned model.
+Also create a `anchor_concept_eval.txt` file in `../assets/eval_prompts/` with prompts to be used for evaluation for instance ablation. 
+In case of style ablation, provide the `<style-name>_eval.txt` with prompts for each of the target and surrounding styles. 
 
 ````
 caption target:{
@@ -125,6 +128,6 @@ caption target:{
 
 ```
 python sample.py --ckpt {} --prompt "New Orleans House Galaxy Case" --ddim_steps 50 --outdir samples_eval --n_copies 200 
-python src/filter.py --folder {} --impath ../assets/mem_images/orleans.png outpath {}
+python src/filter.py --folder {} --impath ../assets/mem_images/orleans.png --outpath {}
 ```
 where `folder` is the path to saved images, i.e., `{ckpt-path}/samples_eval/` and outpath is the folder to save the images which are different than the memorized image.

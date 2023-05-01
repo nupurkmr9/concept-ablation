@@ -1,47 +1,47 @@
 {
   "style": {
     "van gogh": {
-      "target": "vangogh",
+      "target": "van gogh",
       "anchor": "painting",
       "hard_negative": [
         "monet",
-        "greg",
-        "salvador",
-        "johannes",
-        "jeremy"
+        "greg rutkowski",
+        "salvador dali",
+        "johannes vermeer",
+        "jeremy mann"
       ]
     },
     "monet": {
       "target": "monet",
       "anchor": "painting",
       "hard_negative": [
-        "vangogh",
-        "greg",
-        "salvador",
-        "johannes",
-        "jeremy"
+        "van gogh",
+        "greg rutkowski",
+        "salvador dali",
+        "johannes vermeer",
+        "jeremy mann"
       ]
     },
     "greg rutkowski": {
-      "target": "greg",
+      "target": "greg rutkowski",
       "anchor": "painting",
       "hard_negative": [
-        "vangogh",
+        "van gogh",
         "monet",
-        "salvador",
-        "johannes",
-        "jeremy"
+        "salvador dali",
+        "johannes vermeer",
+        "jeremy mann"
       ]
     },
     "salvador dali": {
-      "target": "salvador",
+      "target": "salvador dali",
       "anchor": "painting",
       "hard_negative": [
-        "vangogh",
+        "van gogh",
         "monet",
-        "greg",
-        "johannes",
-        "jeremy"
+        "greg rutkowski",
+        "johannes vermeer",
+        "jeremy mann"
       ]
     }
   },

@@ -179,10 +179,9 @@ lightning:
         save_freq: 200
         max_images: 8
         increase_log_steps: False
-        wandb_log: False
   modelcheckpoint:
     params:
-      every_n_train_steps: 200
+      every_n_train_steps: 10000
 
   trainer:
     max_steps: 410

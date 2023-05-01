@@ -328,22 +328,17 @@ def main():
     model = load_model_from_config(config, f"{opt.ckpt}")
 
     if opt.delta_ckpt is not None:
-        delta_st = torch.load(opt.delta_ckpt)
+        delta_st = torch.load(delta_ckpt)
         embed = None
-        if 'embed' in delta_st:
-            if 'state_dict' not in delta_st:
-                delta_st['state_dict'] = {}
-            delta_st['state_dict']['embed'] = delta_st['embed']
         if 'embed' in delta_st['state_dict']:
             embed = delta_st['state_dict']['embed'].reshape(-1, 768)
             del delta_st['state_dict']['embed']
             print(embed.shape)
-        delta_st = delta_st['state_dict']
-        model.load_state_dict(delta_st, strict=False)
+        model.load_state_dict(delta_st['state_dict'], strict=False)
         if embed is not None:
-            print("loading new embedding")
-            print(model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data.shape)
-            model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[-embed.shape[0]:] = embed
+            print(f"restoring embedding. Embedding shape: {embed.shape[0]}")
+            model.cond_stage_model.transformer.text_model.embeddings.token_embedding.weight.data[
+                    -embed.shape[0]:] = embed
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = model.to(device)
