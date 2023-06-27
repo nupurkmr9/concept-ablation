@@ -296,30 +296,35 @@ def getmetrics(type, target, base_sample_root, ranks, ckpt, n_samples, config,
         sample_path = safe_dir(
             sample_root / (ckpt.stem + "-" + cur_target.replace(' ', '_').replace('-', '_')))
         if not check_generation(sample_path, cur_numgen):
+            for files in sample_path.glob('*'):
+                import shutil
+                os.remove(files) if files.is_file() else shutil.rmtree(str(files))
+
             utils.distributed_sample_images(
                 data, ranks, config, str(
                     ckpt) if 'delta' not in str(ckpt) else base_ckpt,
-                None if 'delta' not in str(ckpt) else str(ckpt), str(sample_path), ddim_steps=50)
+                None if 'delta' not in str(ckpt) else str(ckpt), str(sample_path), ddim_steps=50, n_samples=n_samples)
             prompt_json(sample_path)
 
         # load data for baseline generation
         if type == 'style':
             data = load_data(cur_target.replace(
-                ' ', '_').replace('-', '_'), numgen)
+                ' ', '_').replace('-', '_'), numgen*4, n_samples=n_samples)
         elif type == 'object':
             data = load_data(meta_data['anchor'].replace(
-                ' ', '_').replace('-', '_'), numgen,
-                meta_data['anchor'], cur_target)
+                ' ', '_').replace('-', '_'), numgen*4,
+                meta_data['anchor'], cur_target, n_samples=n_samples)
         else:
             raise NotImplementedError
 
         # base generation
+        print("Generating baseline")
         base_sample_path = safe_dir(Path(
             base_sample_root) / ("base-" + cur_target.replace(' ', '_').replace('-', '_')))
-        if not check_generation(base_sample_path, numgen):
+        if not check_generation(base_sample_path, numgen*4):
             utils.distributed_sample_images(
                 data, ranks, config, base_ckpt,
-                None, str(base_sample_path), ddim_steps=50)
+                None, str(base_sample_path), ddim_steps=50, n_samples=n_samples)
             prompt_json(sample_path)
 
 

@@ -1,5 +1,3 @@
-import glob
-import hashlib
 import os
 import random
 import shutil
@@ -12,11 +10,12 @@ import regex as re
 import requests
 import torch
 from clip_retrieval.clip_client import ClipClient
-from diffusers import DPMSolverMultistepScheduler
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 from tqdm.auto import tqdm
+
+from diffusers import DPMSolverMultistepScheduler
 
 normalize = transforms.Normalize(
     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225],
@@ -28,7 +27,7 @@ small_288 = transforms.Compose([
 ])
 
 
-def retrieve(class_prompt, class_images_dir, num_class_images):
+def retrieve(class_prompt, class_images_dir, num_class_images, save_images=False):
     factor = 1.5
     num_images = int(factor * num_class_images)
     client = ClipClient(url="https://knn.laion.ai/knn-service",
@@ -52,25 +51,33 @@ def retrieve(class_prompt, class_images_dir, num_class_images):
     pbar = tqdm(desc='downloading real regularization images',
                 total=num_class_images)
 
-    with open(f'{class_images_dir}/caption.txt', 'w') as f1, open(f'{class_images_dir}/urls.txt', 'w') as f2, open(f'{class_images_dir}/images.txt', 'w') as f3:
-        while total < num_class_images:
-            images = class_images[count]
-            count += 1
-            try:
-                img = requests.get(images['url'])
-                if img.status_code == 200:
-                    _ = Image.open(BytesIO(img.content))
-                    with open(f'{class_images_dir}/images/{total}.jpg', 'wb') as f:
-                        f.write(img.content)
-                    f1.write(images['caption'] + '\n')
-                    f2.write(images['url'] + '\n')
-                    f3.write(f'{class_images_dir}/images/{total}.jpg' + '\n')
-                    total += 1
-                    pbar.update(1)
-                else:
+    if save_images:
+        with open(f'{class_images_dir}/caption.txt', 'w') as f1, open(f'{class_images_dir}/urls.txt', 'w') as f2, open(f'{class_images_dir}/images.txt', 'w') as f3:
+            while total < num_class_images:
+                images = class_images[count]
+                count += 1
+                try:
+                    img = requests.get(images['url'])
+                    if img.status_code == 200:
+                        _ = Image.open(BytesIO(img.content))
+                        with open(f'{class_images_dir}/images/{total}.jpg', 'wb') as f:
+                            f.write(img.content)
+                        f1.write(images['caption'] + '\n')
+                        f2.write(images['url'] + '\n')
+                        f3.write(f'{class_images_dir}/images/{total}.jpg' + '\n')
+                        total += 1
+                        pbar.update(1)
+                    else:
+                        continue
+                except:
                     continue
-            except:
-                continue
+    else:
+        with open(f'{class_images_dir}/caption.txt', 'w') as f1:
+            while total < num_class_images:
+                images = class_images[count]
+                count += 1
+                f1.write(images['caption'] + '\n')
+                pbar.update(1)
     return
 
 
@@ -416,11 +423,11 @@ def getanchorprompts(pipeline, accelerator, class_prompt, concept_type, class_im
                 model="gpt-3.5-turbo",
                 messages=messages
             )
-            print(completion.choices[0].message.content.lower().split('\n'))
+            # print(completion.choices[0].message.content.lower().split('\n'))
             class_prompt_collection_ = [x.strip(
             ) for x in completion.choices[0].message.content.lower().split('\n') if x.strip() != '']
             class_prompt_collection_ = clean_prompt(class_prompt_collection_)
-            print(class_prompt_collection_)
+            # print(class_prompt_collection_)
             for prompt in tqdm(
                 class_prompt_collection_, desc="Generating anchor and target prompts ", disable=not accelerator.is_local_main_process
             ):
@@ -471,7 +478,8 @@ def getanchorprompts(pipeline, accelerator, class_prompt, concept_type, class_im
         caption_target += [x for (x, y) in class_prompt_collection if y >= 0.6]
         class_prompt_collection = [
             x for (x, y) in class_prompt_collection if y <= threshold][:10]
-        print(class_prompt_collection, caption_target)
+        print("Anchor prompts:", class_prompt_collection)
+        print("Target prompts:", caption_target)
     return class_prompt_collection, ';*+'.join(caption_target)
 
 
@@ -481,6 +489,7 @@ def clean_prompt(class_prompt_collection):
     class_prompt_collection = [re.sub(
         r"^\.+", lambda dots: '' * len(dots.group(0)), prompt) for prompt in class_prompt_collection]
     class_prompt_collection = [x.strip() for x in class_prompt_collection]
+    class_prompt_collection = [x.replace('"', '') for x in class_prompt_collection]
     return class_prompt_collection
 
 

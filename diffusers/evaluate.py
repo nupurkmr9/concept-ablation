@@ -15,13 +15,14 @@ import sklearn.preprocessing
 import torch
 from accelerate import Accelerator
 from cleanfid import fid
-from diffusers import DDIMScheduler, DPMSolverMultistepScheduler
 from model_pipeline import CustomDiffusionPipeline
 from packaging import version
 from PIL import Image
 from torchvision.transforms import CenterCrop, Compose, Normalize, Resize, ToTensor
 from tqdm import tqdm
 from utils import PromptDataset, safe_dir
+
+from diffusers import DDIMScheduler, DPMSolverMultistepScheduler
 
 
 class CLIPCapDataset(torch.utils.data.Dataset):

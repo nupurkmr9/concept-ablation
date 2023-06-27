@@ -89,33 +89,30 @@
 # - To generate or disseminate information for the purpose to be used for administration of justice, law enforcement, immigration or asylum processes, such as predicting an individual will commit fraud/crime commitment (e.g. by text profiling, drawing causal relationships between assertions made in documents, indiscriminate and arbitrarily-targeted use).
 
 import argparse
-import os
-import sys
 import datetime
 import glob
-import numpy as np
+import os
+import sys
 import time
+from functools import partial
+from pathlib import Path
+
+import numpy as np
+import preprocessing
+import pytorch_lightning as pl
 import torch
 import torchvision
-import pytorch_lightning as pl
-from pathlib import Path
-import preprocessing
-
-from packaging import version
-from omegaconf import OmegaConf
-from torch.utils.data import DataLoader, Dataset
-from functools import partial
-from PIL import Image
-
-from pytorch_lightning import seed_everything
-from pytorch_lightning.trainer import Trainer
-from pytorch_lightning.callbacks import Callback, LearningRateMonitor
-from pytorch_lightning.utilities import rank_zero_only
-from pytorch_lightning.utilities import rank_zero_info
 import wandb
-
 from ldm.data.base import Txt2ImgIterableBaseDataset
 from ldm.util import instantiate_from_config
+from omegaconf import OmegaConf
+from packaging import version
+from PIL import Image
+from pytorch_lightning import seed_everything
+from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.trainer import Trainer
+from pytorch_lightning.utilities import rank_zero_info, rank_zero_only
+from torch.utils.data import DataLoader, Dataset
 
 
 def get_parser(**parser_kwargs):
@@ -561,7 +558,8 @@ class SetupCallback(Callback):
 
             if "callbacks" in self.lightning_config:
                 if 'metrics_over_trainsteps_checkpoint' in self.lightning_config['callbacks']:
-                    os.makedirs(os.path.join(self.ckptdir, 'trainstep_checkpoints'), exist_ok=True)
+                    os.makedirs(os.path.join(
+                        self.ckptdir, 'trainstep_checkpoints'), exist_ok=True)
             print("Project config")
             print(OmegaConf.to_yaml(self.config))
             OmegaConf.save(self.config,
@@ -873,6 +871,9 @@ if __name__ == "__main__":
             if opt.datapath == '' or opt.caption == '':
                 print('either initial prompts or path to generated images folder should be provided')
                 raise NotImplementedError
+            if opt.regularization:
+                opt.datapath2 = opt.datapath
+                opt.caption2 = opt.caption
         else:
             name = Path(opt.prompts).stem
             gen_folder = Path(opt.root) / (name + '_gen')

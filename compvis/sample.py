@@ -88,27 +88,26 @@
 # - To provide medical advice and medical results interpretation;
 # - To generate or disseminate information for the purpose to be used for administration of justice, law enforcement, immigration or asylum processes, such as predicting an individual will commit fraud/crime commitment (e.g. by text profiling, drawing causal relationships between assertions made in documents, indiscriminate and arbitrarily-targeted use).
 
-from io import BytesIO
 import argparse
-import os
 import glob
-import torch
+import os
+from contextlib import nullcontext
+from io import BytesIO
+from itertools import islice
+
 import numpy as np
+import torch
+from einops import rearrange
+from ldm.models.diffusion.ddim import DDIMSampler
+from ldm.models.diffusion.dpm_solver import DPMSolverSampler
+from ldm.models.diffusion.plms import PLMSSampler
+from ldm.util import instantiate_from_config
 from omegaconf import OmegaConf
 from PIL import Image
-from tqdm import tqdm, trange
-from einops import rearrange
-from torchvision.utils import make_grid
 from pytorch_lightning import seed_everything
 from torch import autocast
-from contextlib import contextmanager, nullcontext
-
-from ldm.util import instantiate_from_config
-from ldm.models.diffusion.ddim import DDIMSampler
-from ldm.models.diffusion.plms import PLMSSampler
-from ldm.models.diffusion.dpm_solver import DPMSolverSampler
-
-from itertools import islice
+from torchvision.utils import make_grid
+from tqdm import tqdm, trange
 
 
 def chunk(it, size):
@@ -328,7 +327,7 @@ def main():
     model = load_model_from_config(config, f"{opt.ckpt}")
 
     if opt.delta_ckpt is not None:
-        delta_st = torch.load(delta_ckpt)
+        delta_st = torch.load(opt.delta_ckpt)
         embed = None
         if 'embed' in delta_st['state_dict']:
             embed = delta_st['state_dict']['embed'].reshape(-1, 768)

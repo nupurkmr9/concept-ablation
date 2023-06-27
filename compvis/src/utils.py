@@ -169,14 +169,15 @@ def initialize(config, ckpt, delta_ckpt, seed=42):
     return model, sampler, device
 
 
-def sample(data, model, sampler, outpath, ddim_steps=200, ddim_eta=1.0,
+def sample(data, model, sampler, outpath, ddim_steps=200, n_samples=10, ddim_eta=1.0,
            n_iter=1, scale=6, batch_size=10, shape=(4, 64, 64),
            fixed_code=False, device=None, skip_save=False, skip_grid=True,
            metadata=True, base_count=0, n_rows=5, wandb_log=False, ckptname='base', rank=None):
     """
         decoupled image sampling function, including saving, visualizing and wandb logging
     """
-    sample_path = os.path.join(outpath, f"samples")
+    batch_size = n_samples
+    sample_path = os.path.join(outpath, "samples")
     if not Path(sample_path).exists():
         Path(sample_path).mkdir()
 
@@ -284,13 +285,13 @@ def sample(data, model, sampler, outpath, ddim_steps=200, ddim_eta=1.0,
     return image_txt_path, caption_txt_path
 
 
-def sample_images(data, rank, config, ckpt, delta_ckpt, outpath, base_count, ddim_steps):
+def sample_images(data, rank, config, ckpt, delta_ckpt, outpath, base_count, ddim_steps, n_samples):
     torch.cuda.set_device(rank)
     model, sampler, device = initialize(config, ckpt, delta_ckpt)
-    return sample(data, model, sampler, outpath, ddim_steps, base_count=base_count, rank=rank)
+    return sample(data, model, sampler, outpath, ddim_steps, n_samples, base_count=base_count, rank=rank)
 
 
-def distributed_sample_images(data, ranks, config, ckpt, delta_ckpt, outpath, ddim_steps=200):
+def distributed_sample_images(data, ranks, config, ckpt, delta_ckpt, outpath, ddim_steps=200, n_samples=10):
     """
         data        : list of batch prompts (2-dim list)
         ranks       : list of available GPU-cards
@@ -307,7 +308,7 @@ def distributed_sample_images(data, ranks, config, ckpt, delta_ckpt, outpath, dd
         cur_data = data[i*size:(i+1)*size]
         base_count = i*size * len(data[0])
         process = mp.Process(target=sample_images,
-                             args=(cur_data, local_rank, config, ckpt, delta_ckpt, outpath, base_count, ddim_steps))
+                             args=(cur_data, local_rank, config, ckpt, delta_ckpt, outpath, base_count, ddim_steps, n_samples))
         process.start()
         process_stack.append(process)
         count += 1

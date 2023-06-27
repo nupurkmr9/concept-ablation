@@ -3,11 +3,12 @@
 
 import argparse
 import os
-from pathlib import Path
-import requests
-from PIL import Image
 from io import BytesIO
+from pathlib import Path
+
+import requests
 from clip_retrieval.clip_client import ClipClient
+from PIL import Image
 
 
 def retrieve(target_name, outpath, num_class_images):
