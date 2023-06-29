@@ -73,7 +73,7 @@ def retrieve(class_prompt, class_images_dir, num_class_images, save_images=False
                     continue
     else:
         with open(f'{class_images_dir}/caption.txt', 'w') as f1:
-            while total < num_class_images:
+            while count < num_class_images:
                 images = class_images[count]
                 count += 1
                 f1.write(images['caption'] + '\n')

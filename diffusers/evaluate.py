@@ -307,6 +307,7 @@ def sample_images(accelerator, data, ckpt, n_samples, base_ckpt, outpath, ddim_s
     for example in tqdm(
         sample_dataloader, desc="Generating eval images", disable=not accelerator.is_local_main_process
     ):
+        accelerator.wait_for_everyone()
         with open(f'{outpath}/caption.txt', 'a') as f1, open(f'{outpath}/images.txt', 'a') as f2:
             images = pipeline(example["prompt"], num_inference_steps=ddim_steps,
                               guidance_scale=6., eta=1., generator=generator).images
@@ -319,6 +320,7 @@ def sample_images(accelerator, data, ckpt, n_samples, base_ckpt, outpath, ddim_s
                 base_count += 1
                 f2.write(str(image_filename) + '\n')
             f1.write('\n'.join(example["prompt"]) + '\n')
+            accelerator.wait_for_everyone()
 
     del pipeline
 

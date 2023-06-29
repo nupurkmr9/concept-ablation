@@ -9,7 +9,6 @@ import os
 import warnings
 from pathlib import Path
 
-import diffusers
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -18,17 +17,6 @@ import transformers
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import ProjectConfiguration, set_seed
-from diffusers import (
-    AutoencoderKL,
-    DDPMScheduler,
-    DiffusionPipeline,
-    DPMSolverMultistepScheduler,
-    UNet2DConditionModel,
-)
-from diffusers.models.cross_attention import CrossAttention
-from diffusers.optimization import get_scheduler
-from diffusers.utils import check_min_version, is_wandb_available
-from diffusers.utils.import_utils import is_xformers_available
 from huggingface_hub import HfApi, create_repo
 from model_pipeline import (
     CustomDiffusionAttnProcessor,
@@ -46,6 +34,19 @@ from utils import (
     getanchorprompts,
     retrieve,
 )
+
+import diffusers
+from diffusers import (
+    AutoencoderKL,
+    DDPMScheduler,
+    DiffusionPipeline,
+    DPMSolverMultistepScheduler,
+    UNet2DConditionModel,
+)
+from diffusers.models.cross_attention import CrossAttention
+from diffusers.optimization import get_scheduler
+from diffusers.utils import check_min_version, is_wandb_available
+from diffusers.utils.import_utils import is_xformers_available
 
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.14.0")
@@ -251,10 +252,18 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--num_class_images",
         type=int,
+        default=1000,
+        help=(
+            "Minimal anchor class images. If there are not enough images already present in"
+            " class_data_dir, additional images will be sampled with class_prompt."
+        ),
+    )
+    parser.add_argument(
+        "--num_class_prompts",
+        type=int,
         default=200,
         help=(
-            "Minimal class images for prior preservation loss. If there are not enough images already present in"
-            " class_data_dir, additional images will be sampled with class_prompt."
+            "Minimal prompts used to generate anchor class images"
         ),
     )
     parser.add_argument("--seed", type=int, default=42,
@@ -589,7 +598,7 @@ def main(args):
                         name = 'images'
                         if not Path(os.path.join(class_images_dir, name)).exists() or len(list(Path(os.path.join(class_images_dir, name)).iterdir())) < args.num_class_images:
                             retrieve(concept['class_prompt'],
-                                    class_images_dir, args.num_class_images, save_images=False)
+                                    class_images_dir, args.num_class_prompts, save_images=False)
                     with open(os.path.join(class_images_dir, 'caption.txt')) as f:
                         class_prompt_collection = [
                                 x.strip() for x in f.readlines()]
@@ -601,14 +610,14 @@ def main(args):
                     # in case of object query chatGPT to generate captions containing the anchor category
                     if args.concept_type == 'object':
                         class_prompt_collection, _ = getanchorprompts(
-                            pipeline, accelerator, class_prompt, args.concept_type, class_images_dir, args.num_class_images)
+                            pipeline, accelerator, class_prompt, args.concept_type, class_images_dir, args.num_class_prompts)
                         with open(class_images_dir / 'caption_anchor.txt', 'w') as f:
                             for prompt in class_prompt_collection:
                                 f.write(prompt + '\n')
                     # in case of memorization query chatGPT to generate different captions that can be paraphrase of the origianl caption
                     elif args.concept_type == 'memorization':
                         class_prompt_collection, caption_target = getanchorprompts(
-                            pipeline, accelerator, class_prompt, args.concept_type, class_images_dir, args.num_class_images, mem_impath=args.mem_impath)
+                            pipeline, accelerator, class_prompt, args.concept_type, class_images_dir, args.num_class_prompts, mem_impath=args.mem_impath)
                         concept['caption_target'] += f';*+{caption_target}'
                         with open(class_images_dir / 'caption_target.txt', 'w') as f:
                             f.write(concept['caption_target'])
@@ -633,11 +642,13 @@ def main(args):
 
             if os.path.exists(f'{class_images_dir}/caption.txt'):
                 os.remove(f'{class_images_dir}/caption.txt')
+            if os.path.exists(f'{class_images_dir}/images.txt'):
                 os.remove(f'{class_images_dir}/images.txt')
 
             for example in tqdm(
                 sample_dataloader, desc="Generating class images", disable=not accelerator.is_local_main_process
             ):
+                accelerator.wait_for_everyone()
                 with open(f'{class_images_dir}/caption.txt', 'a') as f1, open(f'{class_images_dir}/images.txt', 'a') as f2:
                     images = pipeline(example["prompt"], num_inference_steps=25, guidance_scale=6., eta=1.).images
 
@@ -649,6 +660,7 @@ def main(args):
                         image.save(image_filename)
                         f2.write(str(image_filename)+'\n')
                     f1.write('\n'.join(example["prompt"]) + '\n')
+                    accelerator.wait_for_everyone()
 
             del pipeline
 
