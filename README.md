@@ -2,14 +2,13 @@
 
 ### [website](https://www.cs.cmu.edu/~concept-ablation/)  | [paper](https://arxiv.org/abs/2303.13516) 
 
-<br>
-<div class="gif">
-<p align="center">
-<img src='assets/teaser.jpg' align="center" width=800>
-</p>
-</div>
+
+https://github.com/nupurkmr9/concept-ablation/assets/9297728/dcf6d1d7-b783-49dd-861d-7d785ce6bab0
 
 Our method can ablate (remove) copyrighted materials and memorized images from pretrained Stable Diffusion models. Here we change the target concept distribution to an anchor concept, e.g., Van Gogh painting to paintings or Grumpy cat to Cat.
+
+
+
 
 
 ***Ablating Concepts in Text-to-Image Diffusion Models*** <br>
