@@ -6,5 +6,5 @@ tqdm
 clip-retrieval
 openai
 triton
-xformers
+xformers>=0.0.20
 clean-fid
