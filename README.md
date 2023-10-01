@@ -2,6 +2,9 @@
 
 ### [website](https://www.cs.cmu.edu/~concept-ablation/)  | [paper](https://arxiv.org/abs/2303.13516) 
 
+**[NEW!]** Huggingface demo [link](https://huggingface.co/spaces/nupurkmr9/concept-ablation). 
+
+
 <br>
 <div class="gif">
 <p align="center">

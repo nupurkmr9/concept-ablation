@@ -539,7 +539,7 @@ def main(args):
     # The trackers initializes automatically on the main process.
     if accelerator.is_main_process:
         print(vars(args))
-        accelerator.init_trackers("custom-diffusion", config=vars(args))
+        accelerator.init_trackers("concept-ablation", config=vars(args))
 
     # If passed along, set the training seed now.
     if args.seed is not None:
@@ -664,24 +664,24 @@ def main(args):
 
             del pipeline
 
-            if args.concept_type == 'memorization':
-                filter(class_images_dir, args.mem_impath,
-                        outpath=str(class_images_dir / 'filtered'))
-                with open(class_images_dir / 'caption_target.txt', 'r') as f:
-                    concept['caption_target'] = f.readlines()[0].strip()
-                class_images_dir = class_images_dir / 'filtered'
+        if args.concept_type == 'memorization':
+            filter(class_images_dir, args.mem_impath,
+                    outpath=str(class_images_dir / 'filtered'))
+            with open(class_images_dir / 'caption_target.txt', 'r') as f:
+                concept['caption_target'] = f.readlines()[0].strip()
+            class_images_dir = class_images_dir / 'filtered'
 
-            concept['class_prompt'] = os.path.join(
-                class_images_dir, 'caption.txt')
-            concept['class_data_dir'] = os.path.join(
-                class_images_dir, 'images.txt')
-            concept['instance_prompt'] = os.path.join(
-                class_images_dir, 'caption.txt')
-            concept['instance_data_dir'] = os.path.join(
-                class_images_dir, 'images.txt')
+        concept['class_prompt'] = os.path.join(
+            class_images_dir, 'caption.txt')
+        concept['class_data_dir'] = os.path.join(
+            class_images_dir, 'images.txt')
+        concept['instance_prompt'] = os.path.join(
+            class_images_dir, 'caption.txt')
+        concept['instance_data_dir'] = os.path.join(
+            class_images_dir, 'images.txt')
 
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     # Handle the repository creation
     if accelerator.is_main_process:
