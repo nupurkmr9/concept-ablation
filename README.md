@@ -4,21 +4,20 @@
 
 **[NEW!]** Huggingface demo [link](https://huggingface.co/spaces/nupurkmr9/concept-ablation). 
 
+https://github.com/nupurkmr9/concept-ablation/assets/9297728/fb29bc97-a2a9-497a-bb8e-9ffb02986401
 
-<br>
-<div class="gif">
-<p align="center">
-<img src='assets/teaser.jpg' align="center" width=800>
-</p>
-</div>
+
 
 Our method can ablate (remove) copyrighted materials and memorized images from pretrained Stable Diffusion models. Here we change the target concept distribution to an anchor concept, e.g., Van Gogh painting to paintings or Grumpy cat to Cat.
+
+
+
 
 
 ***Ablating Concepts in Text-to-Image Diffusion Models*** <br>
 [Nupur Kumari](https://nupurkmr9.github.io/), [Bingliang Zhang](https://zhangbingliang2019.github.io), [Sheng-Yu Wang](https://peterwang512.github.io), [Eli Shechtman](https://research.adobe.com/person/eli-shechtman/), [Richard Zhang](https://richzhang.github.io/), [Jun-Yan Zhu](https://www.cs.cmu.edu/~junyanz/)<br>
 CMU, Tsinghua, Adobe <br>
-arXiv, 2023
+ICCV, 2023
 
 ## Introduction
 Large-scale text-to-image diffusion models can generate high-fidelity images with powerful compositional ability. However, these models are typically trained on an enormous amount of Internet data, often containing copyrighted material, licensed images, and personal photos. Furthermore, they have been found to replicate the style of various living artists or memorize exact training samples. How can we remove such copyrighted concepts or images without retraining the model from scratch?
@@ -76,10 +75,10 @@ Note: all our results in the paper were obtained using CompVis based implementat
 If you use this code for your research, please cite our paper.
 
 ```bibtex
-@article{kumari2023conceptablation,
+@inproceedings{kumari2023conceptablation,
   author = {Kumari, Nupur and Zhang, Bingliang and Wang, Sheng-Yu and Shechtman, Eli and Zhang, Richard and Zhu, Jun-Yan},
   title = {Ablating Concepts in Text-to-Image Diffusion Models},
-  journal = {Arxiv},
+  booktitle = ICCV,
   year = {2023},
 }
 ```
