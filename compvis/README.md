@@ -2,7 +2,7 @@
 ## Getting Started
 
 ```
-cd concept-ablation
+cd concept-ablation/compvis
 conda env create -f environment.yaml
 conda activate ablate
 mkdir data

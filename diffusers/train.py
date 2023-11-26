@@ -57,13 +57,13 @@ logger = get_logger(__name__)
 def create_custom_diffusion(unet, parameter_group):
     for name, params in unet.named_parameters():
         if parameter_group == "cross-attn":
-            if 'attn2.to_k' in name or 'attn2.to_v' in name:
+            if "attn2.to_k" in name or "attn2.to_v" in name:
                 params.requires_grad = True
             else:
                 params.requires_grad = False
-        elif parameter_group == 'full-weight':
+        elif parameter_group == "full-weight":
             params.requires_grad = True
-        elif parameter_group == 'embedding':
+        elif parameter_group == "embedding":
             params.requires_grad = False
         else:
             raise ValueError(
@@ -75,9 +75,11 @@ def create_custom_diffusion(unet, parameter_group):
         for layer in unet.children():
             if type(layer) == CrossAttention:
                 bound_method = set_use_memory_efficient_attention_xformers.__get__(
-                    layer, layer.__class__)
+                    layer, layer.__class__
+                )
                 setattr(
-                    layer, 'set_use_memory_efficient_attention_xformers', bound_method)
+                    layer, "set_use_memory_efficient_attention_xformers", bound_method
+                )
             else:
                 change_attn(layer)
 
@@ -86,7 +88,9 @@ def create_custom_diffusion(unet, parameter_group):
     return unet
 
 
-def save_model_card(repo_id: str, images=None, base_model=str, prompt=str, repo_folder=None):
+def save_model_card(
+    repo_id: str, images=None, base_model=str, prompt=str, repo_folder=None
+):
     img_str = ""
     for i, image in enumerate(images):
         image.save(os.path.join(repo_folder, f"image_{i}.png"))
@@ -116,7 +120,9 @@ def save_model_card(repo_id: str, images=None, base_model=str, prompt=str, repo_
         f.write(yaml + model_card)
 
 
-def import_model_class_from_model_name_or_path(pretrained_model_name_or_path: str, revision: str):
+def import_model_class_from_model_name_or_path(
+    pretrained_model_name_or_path: str, revision: str
+):
     text_encoder_config = PretrainedConfig.from_pretrained(
         pretrained_model_name_or_path,
         subfolder="text_encoder",
@@ -144,8 +150,7 @@ def freeze_params(params):
 
 
 def parse_args(input_args=None):
-    parser = argparse.ArgumentParser(
-        description="Simple example of a training script.")
+    parser = argparse.ArgumentParser(description="Simple example of a training script.")
     parser.add_argument(
         "--pretrained_model_name_or_path",
         type=str,
@@ -170,8 +175,8 @@ def parse_args(input_args=None):
         "--concept_type",
         type=str,
         required=True,
-        choices=['style', 'object', 'memorization'],
-        help='the type of removed concepts'
+        choices=["style", "object", "memorization", "nudity", "violence"],
+        help="the type of removed concepts",
     )
     parser.add_argument(
         "--caption_target",
@@ -206,7 +211,7 @@ def parse_args(input_args=None):
         "--mem_impath",
         type=str,
         default="",
-        help='the path to saved memorized image. Required when concept_type is memorization'
+        help="the path to saved memorized image. Required when concept_type is memorization",
     )
     parser.add_argument(
         "--validation_prompt",
@@ -235,13 +240,17 @@ def parse_args(input_args=None):
         action="store_true",
         help="Flag to add prior preservation loss.",
     )
-    parser.add_argument("--prior_loss_weight", type=float,
-                        default=1.0, help="The weight of prior preservation loss.")
+    parser.add_argument(
+        "--prior_loss_weight",
+        type=float,
+        default=1.0,
+        help="The weight of prior preservation loss.",
+    )
     parser.add_argument(
         "--train_size",
         type=int,
         default=1000,
-        help='the number of generated images used for ablating the concept'
+        help="the number of generated images used for ablating the concept",
     )
     parser.add_argument(
         "--output_dir",
@@ -262,12 +271,11 @@ def parse_args(input_args=None):
         "--num_class_prompts",
         type=int,
         default=200,
-        help=(
-            "Minimal prompts used to generate anchor class images"
-        ),
+        help=("Minimal prompts used to generate anchor class images"),
     )
-    parser.add_argument("--seed", type=int, default=42,
-                        help="A seed for reproducible training.")
+    parser.add_argument(
+        "--seed", type=int, default=42, help="A seed for reproducible training."
+    )
     parser.add_argument(
         "--resolution",
         type=int,
@@ -287,10 +295,16 @@ def parse_args(input_args=None):
         ),
     )
     parser.add_argument(
-        "--train_batch_size", type=int, default=4, help="Batch size (per device) for the training dataloader."
+        "--train_batch_size",
+        type=int,
+        default=4,
+        help="Batch size (per device) for the training dataloader.",
     )
     parser.add_argument(
-        "--sample_batch_size", type=int, default=4, help="Batch size (per device) for sampling images."
+        "--sample_batch_size",
+        type=int,
+        default=4,
+        help="Batch size (per device) for sampling images.",
     )
     parser.add_argument("--num_train_epochs", type=int, default=1)
     parser.add_argument(
@@ -362,14 +376,14 @@ def parse_args(input_args=None):
     parser.add_argument(
         "--parameter_group",
         type=str,
-        default='cross-attn',
-        choices=['full-weight', 'cross-attn', 'embedding'],
-        help='parameter groups to finetune. Default: full-weight for memorization and cross-attn for others'
+        default="cross-attn",
+        choices=["full-weight", "cross-attn", "embedding"],
+        help="parameter groups to finetune. Default: full-weight for memorization and cross-attn for others",
     )
     parser.add_argument(
         "--loss_type_reverse",
         type=str,
-        default='model-based',
+        default="model-based",
         help="loss type for reverse fine-tuning",
     )
     parser.add_argument(
@@ -382,25 +396,51 @@ def parse_args(input_args=None):
         ),
     )
     parser.add_argument(
-        "--lr_warmup_steps", type=int, default=500, help="Number of steps for the warmup in the lr scheduler."
+        "--lr_warmup_steps",
+        type=int,
+        default=500,
+        help="Number of steps for the warmup in the lr scheduler.",
     )
     parser.add_argument(
-        "--use_8bit_adam", action="store_true", help="Whether or not to use 8-bit Adam from bitsandbytes."
+        "--use_8bit_adam",
+        action="store_true",
+        help="Whether or not to use 8-bit Adam from bitsandbytes.",
     )
-    parser.add_argument("--adam_beta1", type=float, default=0.9,
-                        help="The beta1 parameter for the Adam optimizer.")
-    parser.add_argument("--adam_beta2", type=float, default=0.999,
-                        help="The beta2 parameter for the Adam optimizer.")
-    parser.add_argument("--adam_weight_decay", type=float,
-                        default=1e-2, help="Weight decay to use.")
-    parser.add_argument("--adam_epsilon", type=float, default=1e-08,
-                        help="Epsilon value for the Adam optimizer")
-    parser.add_argument("--max_grad_norm", default=1.0,
-                        type=float, help="Max gradient norm.")
-    parser.add_argument("--push_to_hub", action="store_true",
-                        help="Whether or not to push the model to the Hub.")
-    parser.add_argument("--hub_token", type=str, default=None,
-                        help="The token to use to push to the Model Hub.")
+    parser.add_argument(
+        "--adam_beta1",
+        type=float,
+        default=0.9,
+        help="The beta1 parameter for the Adam optimizer.",
+    )
+    parser.add_argument(
+        "--adam_beta2",
+        type=float,
+        default=0.999,
+        help="The beta2 parameter for the Adam optimizer.",
+    )
+    parser.add_argument(
+        "--adam_weight_decay", type=float, default=1e-2, help="Weight decay to use."
+    )
+    parser.add_argument(
+        "--adam_epsilon",
+        type=float,
+        default=1e-08,
+        help="Epsilon value for the Adam optimizer",
+    )
+    parser.add_argument(
+        "--max_grad_norm", default=1.0, type=float, help="Max gradient norm."
+    )
+    parser.add_argument(
+        "--push_to_hub",
+        action="store_true",
+        help="Whether or not to push the model to the Hub.",
+    )
+    parser.add_argument(
+        "--hub_token",
+        type=str,
+        default=None,
+        help="The token to use to push to the Model Hub.",
+    )
     parser.add_argument(
         "--hub_model_id",
         type=str,
@@ -460,15 +500,25 @@ def parse_args(input_args=None):
         default=None,
         help="Path to json containing multiple concepts, will overwrite parameters like instance_prompt, class_prompt, etc.",
     )
-    parser.add_argument("--local_rank", type=int, default=-1,
-                        help="For distributed training: local_rank")
     parser.add_argument(
-        "--enable_xformers_memory_efficient_attention", action="store_true", help="Whether or not to use xformers."
+        "--local_rank",
+        type=int,
+        default=-1,
+        help="For distributed training: local_rank",
     )
-    parser.add_argument("--hflip", action="store_true",
-                        help="Apply horizontal flip data augmentation.")
-    parser.add_argument("--noaug", action="store_true",
-                        help="Dont apply augmentation during data augmentation when this flag is enabled.")
+    parser.add_argument(
+        "--enable_xformers_memory_efficient_attention",
+        action="store_true",
+        help="Whether or not to use xformers.",
+    )
+    parser.add_argument(
+        "--hflip", action="store_true", help="Apply horizontal flip data augmentation."
+    )
+    parser.add_argument(
+        "--noaug",
+        action="store_true",
+        help="Dont apply augmentation during data augmentation when this flag is enabled.",
+    )
 
     if input_args is not None:
         args = parser.parse_args(input_args)
@@ -482,18 +532,19 @@ def parse_args(input_args=None):
     if args.with_prior_preservation:
         if args.concepts_list is None:
             if args.class_data_dir is None:
-                raise ValueError(
-                    "You must specify a data directory for class images.")
+                raise ValueError("You must specify a data directory for class images.")
             if args.class_prompt is None:
                 raise ValueError("You must specify prompt for class images.")
     else:
         # logger is not available yet
         if args.class_data_dir is not None:
             warnings.warn(
-                "You need not use --class_data_dir without --with_prior_preservation.")
+                "You need not use --class_data_dir without --with_prior_preservation."
+            )
         if args.class_prompt is not None:
             warnings.warn(
-                "You need not use --class_prompt without --with_prior_preservation.")
+                "You need not use --class_prompt without --with_prior_preservation."
+            )
 
     return args
 
@@ -502,7 +553,8 @@ def main(args):
     logging_dir = Path(args.output_dir, args.logging_dir)
 
     accelerator_project_config = ProjectConfiguration(
-        total_limit=args.checkpoints_total_limit)
+        total_limit=args.checkpoints_total_limit
+    )
 
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
@@ -515,7 +567,8 @@ def main(args):
     if args.report_to == "wandb":
         if not is_wandb_available():
             raise ImportError(
-                "Make sure to install wandb if you want to use it for logging during training.")
+                "Make sure to install wandb if you want to use it for logging during training."
+            )
         import wandb
 
     # Currently, it's not possible to do gradient accumulation when training two models with accelerate.accumulate
@@ -561,17 +614,25 @@ def main(args):
     # Generate class images if prior preservation is enabled.
     for i, concept in enumerate(args.concepts_list):
         # directly path to ablation images and its corresponding prompts is provided.
-        if (concept['instance_prompt'] is not None and concept['instance_data_dir'] is not None):
+        if (
+            concept["instance_prompt"] is not None
+            and concept["instance_data_dir"] is not None
+        ):
             break
 
-        class_images_dir = Path(concept['class_data_dir'])
+        class_images_dir = Path(concept["class_data_dir"])
         if not class_images_dir.exists():
             class_images_dir.mkdir(parents=True, exist_ok=True)
-        os.makedirs(f'{class_images_dir}/images', exist_ok=True)
+        os.makedirs(f"{class_images_dir}/images", exist_ok=True)
 
         # we need to generate training images
-        if len(list(Path(os.path.join(class_images_dir, 'images')).iterdir())) < args.num_class_images:
-            torch_dtype = torch.float16 if accelerator.device.type == "cuda" else torch.float32
+        if (
+            len(list(Path(os.path.join(class_images_dir, "images")).iterdir()))
+            < args.num_class_images
+        ):
+            torch_dtype = (
+                torch.float16 if accelerator.device.type == "cuda" else torch.float32
+            )
             if args.prior_generation_precision == "fp32":
                 torch_dtype = torch.float32
             elif args.prior_generation_precision == "fp16":
@@ -585,100 +646,131 @@ def main(args):
                 revision=args.revision,
             )
             pipeline.scheduler = DPMSolverMultistepScheduler.from_config(
-                                    pipeline.scheduler.config)
+                pipeline.scheduler.config
+            )
 
             pipeline.set_progress_bar_config(disable=True)
             pipeline.to(accelerator.device)
 
             # need to create prompts using class_prompt.
-            if not os.path.isfile(concept['class_prompt']):
+            if not os.path.isfile(concept["class_prompt"]):
                 # style based prompts are retrieved from laion dataset
-                if args.concept_type == 'style':
+                if args.concept_type == "style":
                     if accelerator.is_main_process:
-                        name = 'images'
-                        if not Path(os.path.join(class_images_dir, name)).exists() or len(list(Path(os.path.join(class_images_dir, name)).iterdir())) < args.num_class_images:
-                            retrieve(concept['class_prompt'],
-                                    class_images_dir, args.num_class_prompts, save_images=False)
-                    with open(os.path.join(class_images_dir, 'caption.txt')) as f:
-                        class_prompt_collection = [
-                                x.strip() for x in f.readlines()]
+                        name = "images"
+                        if (
+                            not Path(os.path.join(class_images_dir, name)).exists()
+                            or len(
+                                list(
+                                    Path(os.path.join(class_images_dir, name)).iterdir()
+                                )
+                            )
+                            < args.num_class_images
+                        ):
+                            retrieve(
+                                concept["class_prompt"],
+                                class_images_dir,
+                                args.num_class_prompts,
+                                save_images=False,
+                            )
+                    with open(os.path.join(class_images_dir, "caption.txt")) as f:
+                        class_prompt_collection = [x.strip() for x in f.readlines()]
                     accelerator.wait_for_everyone()
 
                 # LLM based prompt collection.
                 else:
-                    class_prompt = concept['class_prompt']
+                    class_prompt = concept["class_prompt"]
                     # in case of object query chatGPT to generate captions containing the anchor category
-                    if args.concept_type == 'object':
+                    if args.concept_type == "object":
                         class_prompt_collection, _ = getanchorprompts(
-                            pipeline, accelerator, class_prompt, args.concept_type, class_images_dir, args.num_class_prompts)
-                        with open(class_images_dir / 'caption_anchor.txt', 'w') as f:
+                            pipeline,
+                            accelerator,
+                            class_prompt,
+                            args.concept_type,
+                            class_images_dir,
+                            args.num_class_prompts,
+                        )
+                        with open(class_images_dir / "caption_anchor.txt", "w") as f:
                             for prompt in class_prompt_collection:
-                                f.write(prompt + '\n')
+                                f.write(prompt + "\n")
                     # in case of memorization query chatGPT to generate different captions that can be paraphrase of the origianl caption
-                    elif args.concept_type == 'memorization':
+                    elif args.concept_type == "memorization":
                         class_prompt_collection, caption_target = getanchorprompts(
-                            pipeline, accelerator, class_prompt, args.concept_type, class_images_dir, args.num_class_prompts, mem_impath=args.mem_impath)
-                        concept['caption_target'] += f';*+{caption_target}'
-                        with open(class_images_dir / 'caption_target.txt', 'w') as f:
-                            f.write(concept['caption_target'])
-                        print(class_prompt_collection,
-                              concept['caption_target'])
+                            pipeline,
+                            accelerator,
+                            class_prompt,
+                            args.concept_type,
+                            class_images_dir,
+                            args.num_class_prompts,
+                            mem_impath=args.mem_impath,
+                        )
+                        concept["caption_target"] += f";*+{caption_target}"
+                        with open(class_images_dir / "caption_target.txt", "w") as f:
+                            f.write(concept["caption_target"])
+                        print(class_prompt_collection, concept["caption_target"])
             # class_prompt is filepath to prompts.
             else:
-                with open(concept['class_prompt']) as f:
-                    class_prompt_collection = [
-                        x.strip() for x in f.readlines()]
+                with open(concept["class_prompt"]) as f:
+                    class_prompt_collection = [x.strip() for x in f.readlines()]
 
             num_new_images = args.num_class_images
-            logger.info(
-                f"Number of class images to sample: {num_new_images}.")
+            logger.info(f"Number of class images to sample: {num_new_images}.")
 
-            sample_dataset = PromptDataset(
-                class_prompt_collection, num_new_images)
+            sample_dataset = PromptDataset(class_prompt_collection, num_new_images)
             sample_dataloader = torch.utils.data.DataLoader(
-                sample_dataset, batch_size=args.sample_batch_size)
+                sample_dataset, batch_size=args.sample_batch_size
+            )
 
             sample_dataloader = accelerator.prepare(sample_dataloader)
 
-            if os.path.exists(f'{class_images_dir}/caption.txt'):
-                os.remove(f'{class_images_dir}/caption.txt')
-            if os.path.exists(f'{class_images_dir}/images.txt'):
-                os.remove(f'{class_images_dir}/images.txt')
+            if os.path.exists(f"{class_images_dir}/caption.txt"):
+                os.remove(f"{class_images_dir}/caption.txt")
+            if os.path.exists(f"{class_images_dir}/images.txt"):
+                os.remove(f"{class_images_dir}/images.txt")
 
             for example in tqdm(
-                sample_dataloader, desc="Generating class images", disable=not accelerator.is_local_main_process
+                sample_dataloader,
+                desc="Generating class images",
+                disable=not accelerator.is_local_main_process,
             ):
                 accelerator.wait_for_everyone()
-                with open(f'{class_images_dir}/caption.txt', 'a') as f1, open(f'{class_images_dir}/images.txt', 'a') as f2:
-                    images = pipeline(example["prompt"], num_inference_steps=25, guidance_scale=6., eta=1.).images
+                with open(f"{class_images_dir}/caption.txt", "a") as f1, open(
+                    f"{class_images_dir}/images.txt", "a"
+                ) as f2:
+                    images = pipeline(
+                        example["prompt"],
+                        num_inference_steps=25,
+                        guidance_scale=6.0,
+                        eta=1.0,
+                    ).images
 
                     for i, image in enumerate(images):
-                        hash_image = hashlib.sha1(
-                            image.tobytes()).hexdigest()
-                        image_filename = class_images_dir / \
-                            f"images/{example['index'][i]}-{hash_image}.jpg"
+                        hash_image = hashlib.sha1(image.tobytes()).hexdigest()
+                        image_filename = (
+                            class_images_dir
+                            / f"images/{example['index'][i]}-{hash_image}.jpg"
+                        )
                         image.save(image_filename)
-                        f2.write(str(image_filename)+'\n')
-                    f1.write('\n'.join(example["prompt"]) + '\n')
+                        f2.write(str(image_filename) + "\n")
+                    f1.write("\n".join(example["prompt"]) + "\n")
                     accelerator.wait_for_everyone()
 
             del pipeline
 
-        if args.concept_type == 'memorization':
-            filter(class_images_dir, args.mem_impath,
-                    outpath=str(class_images_dir / 'filtered'))
-            with open(class_images_dir / 'caption_target.txt', 'r') as f:
-                concept['caption_target'] = f.readlines()[0].strip()
-            class_images_dir = class_images_dir / 'filtered'
+        if args.concept_type == "memorization":
+            filter(
+                class_images_dir,
+                args.mem_impath,
+                outpath=str(class_images_dir / "filtered"),
+            )
+            with open(class_images_dir / "caption_target.txt", "r") as f:
+                concept["caption_target"] = f.readlines()[0].strip()
+            class_images_dir = class_images_dir / "filtered"
 
-        concept['class_prompt'] = os.path.join(
-            class_images_dir, 'caption.txt')
-        concept['class_data_dir'] = os.path.join(
-            class_images_dir, 'images.txt')
-        concept['instance_prompt'] = os.path.join(
-            class_images_dir, 'caption.txt')
-        concept['instance_data_dir'] = os.path.join(
-            class_images_dir, 'images.txt')
+        concept["class_prompt"] = os.path.join(class_images_dir, "caption.txt")
+        concept["class_data_dir"] = os.path.join(class_images_dir, "images.txt")
+        concept["instance_prompt"] = os.path.join(class_images_dir, "caption.txt")
+        concept["instance_data_dir"] = os.path.join(class_images_dir, "images.txt")
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -691,7 +783,9 @@ def main(args):
         if args.push_to_hub:
             print(args.hub_model_id or Path(args.output_dir).name)
             repo_id = create_repo(
-                repo_id=args.hub_model_id or Path(args.output_dir).name, exist_ok=True, token=args.hub_token
+                repo_id=args.hub_model_id or Path(args.output_dir).name,
+                exist_ok=True,
+                token=args.hub_token,
             )
             print(repo_id)
             repo_id = args.hub_model_id
@@ -713,22 +807,27 @@ def main(args):
 
     # import correct text encoder class
     text_encoder_cls = import_model_class_from_model_name_or_path(
-        args.pretrained_model_name_or_path, args.revision)
+        args.pretrained_model_name_or_path, args.revision
+    )
 
     # Load scheduler and models
     noise_scheduler = DDPMScheduler.from_pretrained(
-        args.pretrained_model_name_or_path, subfolder="scheduler")
+        args.pretrained_model_name_or_path, subfolder="scheduler"
+    )
     text_encoder = text_encoder_cls.from_pretrained(
-        args.pretrained_model_name_or_path, subfolder="text_encoder", revision=args.revision
+        args.pretrained_model_name_or_path,
+        subfolder="text_encoder",
+        revision=args.revision,
     )
     vae = AutoencoderKL.from_pretrained(
-        args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision)
+        args.pretrained_model_name_or_path, subfolder="vae", revision=args.revision
+    )
     unet = UNet2DConditionModel.from_pretrained(
         args.pretrained_model_name_or_path, subfolder="unet", revision=args.revision
     )
 
     vae.requires_grad_(False)
-    if args.parameter_group != 'embedding':
+    if args.parameter_group != "embedding":
         text_encoder.requires_grad_(False)
     unet = create_custom_diffusion(unet, args.parameter_group)
 
@@ -749,6 +848,7 @@ def main(args):
     if args.enable_xformers_memory_efficient_attention:
         if is_xformers_available():
             import xformers
+
             xformers_version = version.parse(xformers.__version__)
             if xformers_version == version.parse("0.0.16"):
                 logger.warn(
@@ -757,11 +857,12 @@ def main(args):
             unet.enable_xformers_memory_efficient_attention()
         else:
             raise ValueError(
-                "xformers is not available. Make sure it is installed correctly")
+                "xformers is not available. Make sure it is installed correctly"
+            )
 
     if args.gradient_checkpointing:
         unet.enable_gradient_checkpointing()
-        if args.parameter_group == 'embedding':
+        if args.parameter_group == "embedding":
             text_encoder.gradient_checkpointing_enable()
     # Enable TF32 for faster training on Ampere GPUs,
     # cf https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices
@@ -770,11 +871,13 @@ def main(args):
 
     if args.scale_lr:
         args.learning_rate = (
-            args.learning_rate * args.gradient_accumulation_steps *
-            args.train_batch_size * accelerator.num_processes
+            args.learning_rate
+            * args.gradient_accumulation_steps
+            * args.train_batch_size
+            * accelerator.num_processes
         )
         if args.with_prior_preservation:
-            args.learning_rate = args.learning_rate * 2.
+            args.learning_rate = args.learning_rate * 2.0
 
     # Use 8-bit Adam for lower memory usage or to fine-tune the model in 16GB GPUs
     if args.use_8bit_adam:
@@ -792,13 +895,16 @@ def main(args):
     # Adding a modifier token which is optimized ####
     # Code taken from https://github.com/huggingface/diffusers/blob/main/examples/textual_inversion/textual_inversion.py
     modifier_token_id = []
-    if args.parameter_group == 'embedding':
-        assert args.concept_type != 'memorization', "embedding finetuning is not supported for memorization"
+    if args.parameter_group == "embedding":
+        assert (
+            args.concept_type != "memorization"
+        ), "embedding finetuning is not supported for memorization"
 
         for concept in args.concept_list:
             # Convert the caption_target to ids
             token_ids = tokenizer.encode(
-                [concept['caption_target']], add_special_tokens=False)
+                [concept["caption_target"]], add_special_tokens=False
+            )
             print(token_ids)
         # Check if initializer_token is a single token or a sequence of tokens
         modifier_token_id += token_ids
@@ -811,12 +917,18 @@ def main(args):
         )
         freeze_params(params_to_freeze)
         params_to_optimize = itertools.chain(
-            text_encoder.get_input_embeddings().parameters())
+            text_encoder.get_input_embeddings().parameters()
+        )
     else:
-        if args.parameter_group == 'cross-attn':
-            params_to_optimize = itertools.chain([x[1] for x in unet.named_parameters() if (
-                'attn2.to_k' in x[0] or 'attn2.to_v' in x[0])])
-        if args.parameter_group == 'full-weight':
+        if args.parameter_group == "cross-attn":
+            params_to_optimize = itertools.chain(
+                [
+                    x[1]
+                    for x in unet.named_parameters()
+                    if ("attn2.to_k" in x[0] or "attn2.to_v" in x[0])
+                ]
+            )
+        if args.parameter_group == "full-weight":
             params_to_optimize = itertools.chain(unet.parameters())
 
     # Optimizer creation
@@ -837,22 +949,23 @@ def main(args):
         size=args.resolution,
         center_crop=args.center_crop,
         num_class_images=args.num_class_images,
-        hflip=args.hflip, aug=not args.noaug,
+        hflip=args.hflip,
+        aug=not args.noaug,
     )
 
     train_dataloader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=args.train_batch_size,
         shuffle=True,
-        collate_fn=lambda examples: collate_fn(
-            examples, args.with_prior_preservation),
+        collate_fn=lambda examples: collate_fn(examples, args.with_prior_preservation),
         num_workers=args.dataloader_num_workers,
     )
 
     # Scheduler and math around the number of training steps.
     overrode_max_train_steps = False
     num_update_steps_per_epoch = math.ceil(
-        len(train_dataloader) / args.gradient_accumulation_steps)
+        len(train_dataloader) / args.gradient_accumulation_steps
+    )
     if args.max_train_steps is None:
         args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
         overrode_max_train_steps = True
@@ -865,7 +978,7 @@ def main(args):
     )
 
     # Prepare everything with our `accelerator`.
-    if args.parameter_group == 'embedding':
+    if args.parameter_group == "embedding":
         text_encoder, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
             text_encoder, optimizer, train_dataloader, lr_scheduler
         )
@@ -876,27 +989,29 @@ def main(args):
 
     # We need to recalculate our total training steps as the size of the training dataloader may have changed.
     num_update_steps_per_epoch = math.ceil(
-        len(train_dataloader) / args.gradient_accumulation_steps)
+        len(train_dataloader) / args.gradient_accumulation_steps
+    )
     if overrode_max_train_steps:
         args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
     # Afterwards we recalculate our number of training epochs
-    args.num_train_epochs = math.ceil(
-        args.max_train_steps / num_update_steps_per_epoch)
+    args.num_train_epochs = math.ceil(args.max_train_steps / num_update_steps_per_epoch)
 
     # Train!
-    total_batch_size = args.train_batch_size * \
-        accelerator.num_processes * args.gradient_accumulation_steps
+    total_batch_size = (
+        args.train_batch_size
+        * accelerator.num_processes
+        * args.gradient_accumulation_steps
+    )
 
     logger.info("***** Running training *****")
     logger.info(f"  Num examples = {len(train_dataset)}")
     logger.info(f"  Num batches each epoch = {len(train_dataloader)}")
     logger.info(f"  Num Epochs = {args.num_train_epochs}")
+    logger.info(f"  Instantaneous batch size per device = {args.train_batch_size}")
     logger.info(
-        f"  Instantaneous batch size per device = {args.train_batch_size}")
-    logger.info(
-        f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}")
-    logger.info(
-        f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
+        f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}"
+    )
+    logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
     logger.info(f"  Total optimization steps = {args.max_train_steps}")
     global_step = 0
     first_epoch = 0
@@ -925,29 +1040,41 @@ def main(args):
             resume_global_step = global_step * args.gradient_accumulation_steps
             first_epoch = global_step // num_update_steps_per_epoch
             resume_step = resume_global_step % (
-                num_update_steps_per_epoch * args.gradient_accumulation_steps)
+                num_update_steps_per_epoch * args.gradient_accumulation_steps
+            )
 
     # Only show the progress bar once on each machine.
-    progress_bar = tqdm(range(global_step, args.max_train_steps),
-                        disable=not accelerator.is_local_main_process)
+    progress_bar = tqdm(
+        range(global_step, args.max_train_steps),
+        disable=not accelerator.is_local_main_process,
+    )
     progress_bar.set_description("Steps")
 
     for epoch in range(first_epoch, args.num_train_epochs):
-        if args.parameter_group == 'embedding':
+        if args.parameter_group == "embedding":
             text_encoder.train()
         else:
             unet.train()
         for step, batch in enumerate(train_dataloader):
             # Skip steps until we reach the resumed step
-            if args.resume_from_checkpoint and epoch == first_epoch and step < resume_step:
+            if (
+                args.resume_from_checkpoint
+                and epoch == first_epoch
+                and step < resume_step
+            ):
                 if step % args.gradient_accumulation_steps == 0:
                     progress_bar.update(1)
                 continue
 
-            with accelerator.accumulate(unet) if args.parameter_group != 'embedding' else accelerator.accumulate(text_encoder):
+            with accelerator.accumulate(
+                unet
+            ) if args.parameter_group != "embedding" else accelerator.accumulate(
+                text_encoder
+            ):
                 # Convert images to latent space
-                latents = vae.encode(batch["pixel_values"].to(
-                    dtype=weight_dtype)).latent_dist.sample()
+                latents = vae.encode(
+                    batch["pixel_values"].to(dtype=weight_dtype)
+                ).latent_dist.sample()
                 latents = latents * vae.config.scaling_factor
 
                 # Sample noise that we'll add to the latents
@@ -955,28 +1082,36 @@ def main(args):
                 bsz = latents.shape[0]
                 # Sample a random timestep for each image
                 timesteps = torch.randint(
-                    0, noise_scheduler.config.num_train_timesteps, (bsz,), device=latents.device)
+                    0,
+                    noise_scheduler.config.num_train_timesteps,
+                    (bsz,),
+                    device=latents.device,
+                )
                 timesteps = timesteps.long()
 
                 # Add noise to the latents according to the noise magnitude at each timestep
                 # (this is the forward diffusion process)
-                noisy_latents = noise_scheduler.add_noise(
-                    latents, noise, timesteps)
+                noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
 
                 # Get the text embedding for conditioning
                 encoder_hidden_states = text_encoder(batch["input_ids"])[0]
-                encoder_anchor_hidden_states = text_encoder(
-                    batch["input_anchor_ids"])[0]
+                encoder_anchor_hidden_states = text_encoder(batch["input_anchor_ids"])[
+                    0
+                ]
 
                 # Predict the noise residual
-                model_pred = unet(noisy_latents, timesteps,
-                                  encoder_hidden_states).sample
+                model_pred = unet(
+                    noisy_latents, timesteps, encoder_hidden_states
+                ).sample
                 with torch.no_grad():
-                    model_pred_anchor = unet(noisy_latents[:encoder_anchor_hidden_states.size(
-                        0)], timesteps[:encoder_anchor_hidden_states.size(0)], encoder_anchor_hidden_states).sample
+                    model_pred_anchor = unet(
+                        noisy_latents[: encoder_anchor_hidden_states.size(0)],
+                        timesteps[: encoder_anchor_hidden_states.size(0)],
+                        encoder_anchor_hidden_states,
+                    ).sample
 
                 # Get the target for loss depending on the prediction type
-                if args.loss_type_reverse == 'model-based':
+                if args.loss_type_reverse == "model-based":
                     if args.with_prior_preservation:
                         target_prior = torch.chunk(noise, 2, dim=0)[1]
                     target = model_pred_anchor
@@ -984,65 +1119,73 @@ def main(args):
                     if noise_scheduler.config.prediction_type == "epsilon":
                         target = noise
                     elif noise_scheduler.config.prediction_type == "v_prediction":
-                        target = noise_scheduler.get_velocity(
-                            latents, noise, timesteps)
+                        target = noise_scheduler.get_velocity(latents, noise, timesteps)
                     else:
                         raise ValueError(
-                            f"Unknown prediction type {noise_scheduler.config.prediction_type}")
+                            f"Unknown prediction type {noise_scheduler.config.prediction_type}"
+                        )
                     if args.with_prior_preservation:
                         target, target_prior = torch.chunk(target, 2, dim=0)
 
                 if args.with_prior_preservation:
                     # Chunk the noise and model_pred into two parts and compute the loss on each part separately.
-                    model_pred, model_pred_prior = torch.chunk(
-                        model_pred, 2, dim=0)
+                    model_pred, model_pred_prior = torch.chunk(model_pred, 2, dim=0)
                     mask = torch.chunk(batch["mask"], 2, dim=0)[0]
                     # Compute instance loss
-                    loss = F.mse_loss(model_pred.float(),
-                                      target.float(), reduction="none")
-                    loss = (
-                        (loss * mask).sum([1, 2, 3]) / mask.sum([1, 2, 3])).mean()
+                    loss = F.mse_loss(
+                        model_pred.float(), target.float(), reduction="none"
+                    )
+                    loss = ((loss * mask).sum([1, 2, 3]) / mask.sum([1, 2, 3])).mean()
 
                     # Compute prior loss
                     prior_loss = F.mse_loss(
-                        model_pred_prior.float(), target_prior.float(), reduction="mean")
+                        model_pred_prior.float(), target_prior.float(), reduction="mean"
+                    )
 
                     # Add the prior loss to the instance loss.
                     loss = loss + args.prior_loss_weight * prior_loss
                 else:
                     mask = batch["mask"]
-                    loss = F.mse_loss(model_pred.float(),
-                                      target.float(), reduction="none")
-                    loss = (
-                        (loss * mask).sum([1, 2, 3]) / mask.sum([1, 2, 3])).mean()
+                    loss = F.mse_loss(
+                        model_pred.float(), target.float(), reduction="none"
+                    )
+                    loss = ((loss * mask).sum([1, 2, 3]) / mask.sum([1, 2, 3])).mean()
 
                 accelerator.backward(loss)
                 # Zero out the gradients for all token embeddings except the newly added
                 # embeddings for the concept, as we only want to optimize the concept embeddings
-                if args.parameter_group == 'embedding':
+                if args.parameter_group == "embedding":
                     if accelerator.num_processes > 1:
-                        grads_text_encoder = text_encoder.module.get_input_embeddings().weight.grad
+                        grads_text_encoder = (
+                            text_encoder.module.get_input_embeddings().weight.grad
+                        )
                     else:
-                        grads_text_encoder = text_encoder.get_input_embeddings().weight.grad
+                        grads_text_encoder = (
+                            text_encoder.get_input_embeddings().weight.grad
+                        )
                     # Get the index for tokens that we want to zero the grads for
-                    index_grads_to_zero = torch.arange(
-                        len(tokenizer)) != modifier_token_id[0]
+                    index_grads_to_zero = (
+                        torch.arange(len(tokenizer)) != modifier_token_id[0]
+                    )
                     for i in range(len(modifier_token_id[1:])):
                         index_grads_to_zero = index_grads_to_zero & (
-                            torch.arange(len(tokenizer)) != modifier_token_id[i])
-                    grads_text_encoder.data[index_grads_to_zero,
-                                            :] = grads_text_encoder.data[index_grads_to_zero, :].fill_(0)
+                            torch.arange(len(tokenizer)) != modifier_token_id[i]
+                        )
+                    grads_text_encoder.data[
+                        index_grads_to_zero, :
+                    ] = grads_text_encoder.data[index_grads_to_zero, :].fill_(0)
 
                 if accelerator.sync_gradients:
                     params_to_clip = (
                         itertools.chain(text_encoder.parameters())
-                        if args.parameter_group == 'embedding'
-                        else itertools.chain([x[1] for x in unet.named_parameters() if ('attn2' in x[0])])
-                        if args.parameter_group == 'cross-attn'
+                        if args.parameter_group == "embedding"
+                        else itertools.chain(
+                            [x[1] for x in unet.named_parameters() if ("attn2" in x[0])]
+                        )
+                        if args.parameter_group == "cross-attn"
                         else itertools.chain(unet.parameters())
                     )
-                    accelerator.clip_grad_norm_(
-                        params_to_clip, args.max_grad_norm)
+                    accelerator.clip_grad_norm_(params_to_clip, args.max_grad_norm)
                 optimizer.step()
                 lr_scheduler.step()
                 optimizer.zero_grad()
@@ -1057,20 +1200,20 @@ def main(args):
                         pipeline = CustomDiffusionPipeline.from_pretrained(
                             args.pretrained_model_name_or_path,
                             unet=accelerator.unwrap_model(unet),
-                            text_encoder=accelerator.unwrap_model(
-                                text_encoder),
+                            text_encoder=accelerator.unwrap_model(text_encoder),
                             tokenizer=tokenizer,
                             revision=args.revision,
                             modifier_token_id=modifier_token_id,
                         )
                         save_path = os.path.join(
-                            args.output_dir, f"delta-{global_step}")
+                            args.output_dir, f"delta-{global_step}"
+                        )
                         pipeline.save_pretrained(
-                            save_path, parameter_group=args.parameter_group)
+                            save_path, parameter_group=args.parameter_group
+                        )
                         logger.info(f"Saved state to {save_path}")
 
-            logs = {"loss": loss.detach().item(
-            ), "lr": lr_scheduler.get_last_lr()[0]}
+            logs = {"loss": loss.detach().item(), "lr": lr_scheduler.get_last_lr()[0]}
             progress_bar.set_postfix(**logs)
             accelerator.log(logs, step=global_step)
 
@@ -1078,7 +1221,10 @@ def main(args):
                 break
 
         if accelerator.is_main_process:
-            if args.validation_prompt is not None and global_step % args.validation_steps == 0:
+            if (
+                args.validation_prompt is not None
+                and global_step % args.validation_steps == 0
+            ):
                 logger.info(
                     f"Running validation... \n Generating {args.num_validation_images} images with prompt:"
                     f" {args.validation_prompt}."
@@ -1093,31 +1239,38 @@ def main(args):
                     modifier_token_id=modifier_token_id,
                 )
                 pipeline.scheduler = DPMSolverMultistepScheduler.from_config(
-                    pipeline.scheduler.config)
+                    pipeline.scheduler.config
+                )
                 pipeline = pipeline.to(accelerator.device)
                 pipeline.set_progress_bar_config(disable=True)
 
                 # run inference
-                generator = torch.Generator(
-                    device=accelerator.device).manual_seed(args.seed)
+                generator = torch.Generator(device=accelerator.device).manual_seed(
+                    args.seed
+                )
                 images = [
-                    pipeline(args.validation_prompt, num_inference_steps=25,
-                             generator=generator, eta=1.).images[0]
+                    pipeline(
+                        args.validation_prompt,
+                        num_inference_steps=25,
+                        generator=generator,
+                        eta=1.0,
+                    ).images[0]
                     for _ in range(args.num_validation_images)
                 ]
 
                 for tracker in accelerator.trackers:
                     if tracker.name == "tensorboard":
-                        np_images = np.stack([np.asarray(img)
-                                             for img in images])
+                        np_images = np.stack([np.asarray(img) for img in images])
                         tracker.writer.add_images(
-                            "validation", np_images, epoch, dataformats="NHWC")
+                            "validation", np_images, epoch, dataformats="NHWC"
+                        )
                     if tracker.name == "wandb":
                         tracker.log(
                             {
                                 "validation": [
                                     wandb.Image(
-                                        image, caption=f"{i}: {args.validation_prompt}")
+                                        image, caption=f"{i}: {args.validation_prompt}"
+                                    )
                                     for i, image in enumerate(images)
                                 ]
                             }
@@ -1138,22 +1291,27 @@ def main(args):
             modifier_token_id=modifier_token_id,
         )
         save_path = os.path.join(args.output_dir, "delta.bin")
-        pipeline.save_pretrained(
-            save_path, parameter_group=args.parameter_group)
+        pipeline.save_pretrained(save_path, parameter_group=args.parameter_group)
 
         # run inference
         if args.validation_prompt and args.num_validation_images > 0:
             pipeline.scheduler = DPMSolverMultistepScheduler.from_config(
-                pipeline.scheduler.config)
+                pipeline.scheduler.config
+            )
             pipeline = pipeline.to(accelerator.device)
             pipeline.set_progress_bar_config(disable=True)
 
             # run inference
-            generator = torch.Generator(
-                device=accelerator.device).manual_seed(args.seed)
+            generator = torch.Generator(device=accelerator.device).manual_seed(
+                args.seed
+            )
             images = [
-                pipeline(args.validation_prompt, num_inference_steps=25,
-                         generator=generator, eta=1.).images[0]
+                pipeline(
+                    args.validation_prompt,
+                    num_inference_steps=25,
+                    generator=generator,
+                    eta=1.0,
+                ).images[0]
                 for _ in range(args.num_validation_images)
             ]
 
@@ -1161,13 +1319,15 @@ def main(args):
                 if tracker.name == "tensorboard":
                     np_images = np.stack([np.asarray(img) for img in images])
                     tracker.writer.add_images(
-                        "test", np_images, epoch, dataformats="NHWC")
+                        "test", np_images, epoch, dataformats="NHWC"
+                    )
                 if tracker.name == "wandb":
                     tracker.log(
                         {
                             "test": [
                                 wandb.Image(
-                                    image, caption=f"{i}: {args.validation_prompt}")
+                                    image, caption=f"{i}: {args.validation_prompt}"
+                                )
                                 for i, image in enumerate(images)
                             ]
                         }
@@ -1185,8 +1345,8 @@ def main(args):
             api.upload_folder(
                 repo_id=repo_id,
                 folder_path=args.output_dir,
-                path_in_repo='.',
-                repo_type='model'
+                path_in_repo=".",
+                repo_type="model",
             )
 
     accelerator.end_training()

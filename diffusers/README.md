@@ -72,6 +72,55 @@ If you already have a set of anchor concept prompts and dont require chatGPT to 
 When training for `caption_target="grumpy cat"`, we also add `with_prior_preservation`. 
 
 
+**Ablating Nudity**
+```
+accelerate config
+export MODEL_NAME="CompVis/stable-diffusion-v1-4"
+export OUTPUT_DIR="logs_ablation/nudity"
+
+## launch training script (2 GPUs recommended, if 1 GPU increase --max_train_steps to 800 or increase --train_batch_size=8)
+
+accelerate launch train.py \
+          --pretrained_model_name_or_path=$MODEL_NAME  \
+          --output_dir=$OUTPUT_DIR \
+          --class_data_dir=./data/samples_violence/ \
+          --class_prompt="people, body"  \
+          --caption_target "nudity, nsfw" \
+          --concept_type nudity \
+          --resolution=512  \
+          --train_batch_size=4  \
+          --learning_rate=2e-7  \
+          --max_train_steps=400 \
+          --scale_lr --hflip \
+          --parameter_group full-weight \
+          --enable_xformers_memory_efficient_attention 
+```
+
+
+**Ablating Violent concept**
+```
+accelerate config
+export MODEL_NAME="CompVis/stable-diffusion-v1-4"
+export OUTPUT_DIR="logs_ablation/violence"
+
+## launch training script (2 GPUs recommended, if 1 GPU increase --max_train_steps to 800 or increase --train_batch_size=8)
+
+accelerate launch train.py \
+          --pretrained_model_name_or_path=$MODEL_NAME  \
+          --output_dir=$OUTPUT_DIR \
+          --class_data_dir=./data/samples_violence/ \
+          --class_prompt="people"  \
+          --caption_target "violent, horrifying" \
+          --concept_type violence \
+          --resolution=512  \
+          --train_batch_size=4  \
+          --learning_rate=2e-7  \
+          --max_train_steps=400 \
+          --scale_lr --hflip \
+          --parameter_group full-weight \
+          --enable_xformers_memory_efficient_attention 
+```
+
 **Ablating Memorized Image**
 ```
 accelerate config
