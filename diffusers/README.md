@@ -83,7 +83,7 @@ export OUTPUT_DIR="logs_ablation/nudity"
 accelerate launch train.py \
           --pretrained_model_name_or_path=$MODEL_NAME  \
           --output_dir=$OUTPUT_DIR \
-          --class_data_dir=./data/samples_violence/ \
+          --class_data_dir=./data/samples_nudity/ \
           --class_prompt="people, body"  \
           --caption_target "nudity, nsfw" \
           --concept_type nudity \
