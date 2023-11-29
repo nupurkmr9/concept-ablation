@@ -655,7 +655,7 @@ def main(args):
             # need to create prompts using class_prompt.
             if not os.path.isfile(concept["class_prompt"]):
                 # style based prompts are retrieved from laion dataset
-                if args.concept_type == "style":
+                if args.concept_type in ["style", "nudity", "violence"]:
                     if accelerator.is_main_process:
                         name = "images"
                         if (
