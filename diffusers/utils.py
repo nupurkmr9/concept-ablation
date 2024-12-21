@@ -1,19 +1,16 @@
 import os
 import random
 import shutil
-from io import BytesIO
 from pathlib import Path
-
 import numpy as np
 import openai
 import regex as re
-import requests
 import torch
-from clip_retrieval.clip_client import ClipClient
 from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms
 from tqdm.auto import tqdm
+import transformers
 
 from diffusers import DPMSolverMultistepScheduler
 
@@ -28,69 +25,6 @@ small_288 = transforms.Compose(
         normalize,
     ]
 )
-
-
-def retrieve(class_prompt, class_images_dir, num_class_images, save_images=False):
-    factor = 1.5
-    num_images = int(factor * num_class_images)
-    client = ClipClient(
-        url="https://knn.laion.ai/knn-service",
-        indice_name="laion_400m",
-        num_images=num_images,
-        aesthetic_weight=0.1,
-    )
-
-    os.makedirs(f"{class_images_dir}/images", exist_ok=True)
-    if len(list(Path(f"{class_images_dir}/images").iterdir())) >= num_class_images:
-        return
-
-    while True:
-        class_images = client.query(text=class_prompt)
-        if len(class_images) >= factor * num_class_images or num_images > 1e4:
-            break
-        else:
-            num_images = int(factor * num_images)
-            client = ClipClient(
-                url="https://knn.laion.ai/knn-service",
-                indice_name="laion_400m",
-                num_images=num_images,
-                aesthetic_weight=0.1,
-            )
-
-    count = 0
-    total = 0
-    pbar = tqdm(desc="downloading real regularization images", total=num_class_images)
-
-    if save_images:
-        with open(f"{class_images_dir}/caption.txt", "w") as f1, open(
-            f"{class_images_dir}/urls.txt", "w"
-        ) as f2, open(f"{class_images_dir}/images.txt", "w") as f3:
-            while total < num_class_images:
-                images = class_images[count]
-                count += 1
-                try:
-                    img = requests.get(images["url"])
-                    if img.status_code == 200:
-                        _ = Image.open(BytesIO(img.content))
-                        with open(f"{class_images_dir}/images/{total}.jpg", "wb") as f:
-                            f.write(img.content)
-                        f1.write(images["caption"] + "\n")
-                        f2.write(images["url"] + "\n")
-                        f3.write(f"{class_images_dir}/images/{total}.jpg" + "\n")
-                        total += 1
-                        pbar.update(1)
-                    else:
-                        continue
-                except:
-                    continue
-    else:
-        with open(f"{class_images_dir}/caption.txt", "w") as f1:
-            while count < num_class_images:
-                images = class_images[count]
-                count += 1
-                f1.write(images["caption"] + "\n")
-                pbar.update(1)
-    return
 
 
 def collate_fn(examples, with_prior_preservation):
@@ -251,14 +185,14 @@ class CustomDiffusionDataset(Dataset):
                 if r == 1
                 else f"in {instance_target}'s style, {instance_prompt}"
             )
-        elif self.concept_type in ["nudity", "violence"]:
+        elif self.concept_type in ["nudity", "inappropriate_content"]:
             r = np.random.choice([0, 1, 2])
             instance_prompt = (
                 f"{instance_target}, {instance_prompt}"
                 if r == 0
-                else f"in {instance_target}'s style, {instance_prompt}"
+                else f"in {instance_target} style, {instance_prompt}"
                 if r == 1
-                else f"in {instance_target}'s style, {instance_prompt}"
+                else f"{instance_prompt}, {instance_target}"
             )
         elif self.concept_type == "object":
             anchor, target = instance_target.split("+")
@@ -442,34 +376,69 @@ def getanchorprompts(
     class_images_dir,
     num_class_images=200,
     mem_impath=None,
+    model_id="meta-llama",
 ):
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+    if model_id == "openai":
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+    else:
+        model_id = "meta-llama/Meta-Llama-3-8B-Instruct"
+        model = transformers.pipeline(
+            "text-generation",
+            model=model_id,
+            model_kwargs={"torch_dtype": torch.bfloat16},
+            device_map="auto",
+        )
     class_prompt_collection = []
     caption_target = []
-    if concept_type == "object":
-        messages = [
-            {
-                "role": "system",
-                "content": "You can describe any image via text and provide captions for wide variety of images that is possible to generate.",
-            }
-        ]
-        messages = [
-            {
-                "role": "user",
-                "content": f'Generate {num_class_images} captions for images containing a {class_prompt}. The caption should also contain the word "{class_prompt}" ',
-            }
-        ]
-        while True:
-            completion = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo", messages=messages
-            )
-            class_prompt_collection += [
-                x
-                for x in completion.choices[0].message.content.lower().split("\n")
-                if class_prompt in x
+    if concept_type in ["object", "nudity", "inappropriate_content"]:
+        if model_id == "openai":
+            messages = [
+                {"role": "system", "content": "You can describe any image via text and provide captions for wide variety of images that is possible to generate."},
+                {"role": "user", "content": f'Generate {num_class_images} captions for images containing a {class_prompt}. The caption should also contain the word "{class_prompt}" '},
             ]
+        else:
+            messages = [
+                    {"role": "system", "content": "You can describe any image via text and provide captions for wide variety of images that is possible to generate."},
+                    {"role": "user", "content": f'''Generate {num_class_images} caption for images containing a {class_prompt}. The caption should also contain the word "{class_prompt}". DO NOT add any unnecessary adjectives or emotion words in the caption. Please keep the caption factual and terse but complete. DO NOT add any unnecessary speculation about the things that are not part of the image such as "the image is inspiring to viewers" or "seeing this makes you feel joy". DO NOT add things such as "creates a unique and entertaining visual", as these descriptions are interpretations and not a part of the image itself. The description should be purely factual, with no subjective speculation.
+
+                            Example captions for the category "cat" are:
+                            1. A photo of a siamese cat playing in a garden.
+                            2. A cat is sitting beside a book in a library.
+                            4. Watercolor style painting of a cat. '''
+                    }, ]
+        numtries = 0
+        while True:
+            if model_id == "openai":
+                outputs = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo", messages=messages
+                ).choices[0].message.content.lower().split("\n")
+            else:
+                terminators = [
+                    pipeline.tokenizer.eos_token_id,
+                    pipeline.tokenizer.convert_tokens_to_ids("<|eot_id|>")
+                ]
+                outputs = model(
+                    messages,
+                    max_new_tokens=2048,
+                    eos_token_id=terminators,
+                    do_sample=True,
+                    temperature=0.6,
+                    top_p=0.9,
+                )[0]["generated_text"][-1]['content'].split("\n")[1:-1]
+
+            print(outputs)
+            if concept_type in ["object", "nudity", "inappropriate_content"]:
+                class_prompt_collection += [
+                    x for x in outputs if x != ''
+                ]
+            else:
+                class_prompt_collection += [
+                    x
+                    for x in outputs
+                    if (class_prompt in x and x != '')
+                ]
             messages.append(
-                {"role": "assistant", "content": completion.choices[0].message.content}
+                {"role": "assistant", "content": outputs}
             )
             messages.append(
                 {
@@ -477,7 +446,10 @@ def getanchorprompts(
                     "content": f"Generate {num_class_images-len(class_prompt_collection)} more captions",
                 }
             )
-            if len(class_prompt_collection) >= num_class_images:
+            messages = messages[min(len(messages),-10):]
+            print(len(class_prompt_collection))
+            numtries +=1
+            if len(class_prompt_collection) >= num_class_images or numtries > 10:
                 break
         class_prompt_collection = clean_prompt(class_prompt_collection)[
             :num_class_images
@@ -547,9 +519,6 @@ def getanchorprompts(
 
             if len(class_prompt_collection) >= num_prompts_firstpass:
                 break
-            # print("prompts till now", class_prompt_collection, caption_target)
-            # print("prompts till now", len(
-            #     class_prompt_collection), len(caption_target))
             prev_captions += class_prompt_collection_
             prev_captions_ = ",".join(prev_captions[-40:])
 
@@ -622,5 +591,5 @@ def clean_prompt(class_prompt_collection):
 
 def safe_dir(dir):
     if not dir.exists():
-        dir.mkdir()
+        os.makedirs(str(dir), exist_ok=True)
     return dir

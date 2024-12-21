@@ -3,14 +3,21 @@ from typing import Callable, Optional
 import torch
 from accelerate.logging import get_logger
 from diffusers.models import AutoencoderKL, UNet2DConditionModel
-from diffusers.models.cross_attention import CrossAttention
-from diffusers.pipelines.stable_diffusion import StableDiffusionPipeline
+from packaging import version
+import diffusers
+print(version.parse(diffusers.__version__))
+if version.parse(diffusers.__version__) < version.parse("0.20.0"):
+    from diffusers.models.cross_attention import CrossAttention
+else:
+    from diffusers.models.attention import Attention as CrossAttention
+from diffusers import StableDiffusionPipeline
 from diffusers.pipelines.stable_diffusion.safety_checker import (
     StableDiffusionSafetyChecker,
 )
 from diffusers.schedulers.scheduling_utils import SchedulerMixin
 from diffusers.utils.import_utils import is_xformers_available
-from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
+from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection
+
 
 if is_xformers_available():
     import xformers
@@ -83,8 +90,12 @@ class CustomDiffusionAttnProcessor:
             encoder_hidden_states = hidden_states
         else:
             crossattn = True
-            if attn.cross_attention_norm:
-                encoder_hidden_states = attn.norm_cross(encoder_hidden_states)
+            if version.parse(diffusers.__version__) < version.parse("0.20.0"):
+                if attn.cross_attention_norm:
+                    encoder_hidden_states = attn.norm_cross(encoder_hidden_states)
+            else:
+                if attn.norm_cross:
+                    encoder_hidden_states = attn.norm_encoder_hidden_states(encoder_hidden_states)
 
         key = attn.to_k(encoder_hidden_states)
         value = attn.to_v(encoder_hidden_states)
@@ -127,8 +138,13 @@ class CustomDiffusionXFormersAttnProcessor:
             encoder_hidden_states = hidden_states
         else:
             crossattn = True
-            if attn.cross_attention_norm:
-                encoder_hidden_states = attn.norm_cross(encoder_hidden_states)
+            if version.parse(diffusers.__version__) < version.parse("0.20.0"):
+                if attn.cross_attention_norm:
+                    encoder_hidden_states = attn.norm_cross(encoder_hidden_states)
+            else:
+                if attn.norm_cross:
+                    encoder_hidden_states = attn.norm_encoder_hidden_states(encoder_hidden_states)
+
 
         key = attn.to_k(encoder_hidden_states)
         value = attn.to_v(encoder_hidden_states)
@@ -155,6 +171,8 @@ class CustomDiffusionXFormersAttnProcessor:
         return hidden_states
 
 
+from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion import retrieve_timesteps, rescale_noise_cfg, StableDiffusionPipelineOutput
+
 class CustomDiffusionPipeline(StableDiffusionPipeline):
     r"""
     Pipeline for custom diffusion model.
@@ -180,10 +198,9 @@ class CustomDiffusionPipeline(StableDiffusionPipeline):
             Please, refer to the [model card](https://huggingface.co/runwayml/stable-diffusion-v1-5) for details.
         feature_extractor ([`CLIPFeatureExtractor`]):
             Model that extracts features from generated images to be used as inputs for the `safety_checker`.
-        modifier_token_id: list of id of tokens related to the target concept that are modified when ablated.
     """
     _optional_components = ["safety_checker",
-                            "feature_extractor", "modifier_token_id"]
+                            "feature_extractor"]
 
     def __init__(
         self,
@@ -194,19 +211,19 @@ class CustomDiffusionPipeline(StableDiffusionPipeline):
         scheduler: SchedulerMixin,
         safety_checker: StableDiffusionSafetyChecker,
         feature_extractor: CLIPFeatureExtractor,
+        image_encoder: CLIPVisionModelWithProjection = None,
         requires_safety_checker: bool = True,
-        modifier_token_id: list = [],
     ):
-        super().__init__(vae,
-                         text_encoder,
-                         tokenizer,
-                         unet,
-                         scheduler,
-                         safety_checker,
-                         feature_extractor,
-                         requires_safety_checker)
+        super().__init__(vae=vae,
+                         text_encoder=text_encoder,
+                         tokenizer=tokenizer,
+                         unet=unet,
+                         scheduler=scheduler,
+                         safety_checker=safety_checker,
+                         feature_extractor=feature_extractor,
+                         image_encoder=image_encoder,
+                         requires_safety_checker=requires_safety_checker)
 
-        self.modifier_token_id = modifier_token_id
 
     def save_pretrained(self, save_path, parameter_group="cross-attn", all=False):
         if all:
@@ -218,6 +235,9 @@ class CustomDiffusionPipeline(StableDiffusionPipeline):
             for name, params in self.unet.named_parameters():
                 if parameter_group == "cross-attn":
                     if 'attn2.to_k' in name or 'attn2.to_v' in name:
+                        delta_dict['unet'][name] = params.cpu().clone()
+                elif parameter_group == "attn":
+                    if "to_q" in name or "to_k" in name or "to_v" in name or "to_out" in name:
                         delta_dict['unet'][name] = params.cpu().clone()
                 elif parameter_group == "full-weight":
                     delta_dict['unet'][name] = params.cpu().clone()

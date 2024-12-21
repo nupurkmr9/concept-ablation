@@ -2,15 +2,13 @@
 
 ### [website](https://www.cs.cmu.edu/~concept-ablation/)  | [paper](https://arxiv.org/abs/2303.13516) 
 
-**[NEW!]** Huggingface demo [link](https://huggingface.co/spaces/nupurkmr9/concept-ablation). 
+**[NEW!]** Additional experiments for Inappropriate content removal [link](diffusers/README.md). 
 
 https://github.com/nupurkmr9/concept-ablation/assets/9297728/fb29bc97-a2a9-497a-bb8e-9ffb02986401
 
 
 
 Our method can ablate (remove) copyrighted materials and memorized images from pretrained Stable Diffusion models. Here we change the target concept distribution to an anchor concept, e.g., Van Gogh painting to paintings or Grumpy cat to Cat.
-
-
 
 
 

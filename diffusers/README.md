@@ -44,18 +44,17 @@ accelerate launch train.py \
 
 **Use `--enable_xformers_memory_efficient_attention` for faster training with lower VRAM requirement (16GB per GPU).**
 
-**Ablating Instance**
+**Ablating Objects/Instances**
 ```
 accelerate config
 export MODEL_NAME="CompVis/stable-diffusion-v1-4"
-export OPENAI_API_KEY="provide-your-api-key"
 export OUTPUT_DIR="logs_ablation/r2d2"
 
 ## launch training script (2 GPUs recommended, if 1 GPU increase --max_train_steps to 200 or increase --train_batch_size=8)
 
 accelerate launch train.py \
           --pretrained_model_name_or_path=$MODEL_NAME  \
-          --output_dir=./logs_ablation/r2d2 \
+          --output_dir=$OUTPUT_DIR \
           --class_data_dir=./data/samples_robot/ \
           --class_prompt="robot" \
           --caption_target "robot+r2d2" \
@@ -68,11 +67,13 @@ accelerate launch train.py \
           --parameter_group cross-attn \
           --enable_xformers_memory_efficient_attention 
 ```
-If you already have a set of anchor concept prompts and dont require chatGPT to generate random prompts, you can provide the the path to the text file in `class_prompt`. 
-When training for `caption_target="grumpy cat"`, we also add `with_prior_preservation`. 
+
+When ablating for target objects with overlapping text prompt between anchor and the target, e.g., `caption_target="grumpy cat+cat"` and `class_prompt="cat"`, we also add `--with_prior_preservation`. 
 
 
-**Ablating Nudity**
+**Ablating Nudity and Violent concept**
+Note: this was added after the ICCV publication and updated based on the discussio in the issue[](). We use a higher learning rate, with all attention parameter fine-tuning using our proposed objective. 
+
 ```
 accelerate config
 export MODEL_NAME="CompVis/stable-diffusion-v1-4"
@@ -83,43 +84,39 @@ export OUTPUT_DIR="logs_ablation/nudity"
 accelerate launch train.py \
           --pretrained_model_name_or_path=$MODEL_NAME  \
           --output_dir=$OUTPUT_DIR \
-          --class_data_dir=./data/samples_nudity/ \
-          --class_prompt="people, body"  \
+          --class_data_dir=./data/samples_people/ \
+          --class_prompt="people, body, boy, girl, women, man, child"  \
           --caption_target "nudity, nsfw" \
           --concept_type nudity \
           --resolution=512  \
           --train_batch_size=4  \
-          --learning_rate=2e-7  \
-          --max_train_steps=400 \
+          --learning_rate=4e-6  \
+          --max_train_steps=400 --num_class_prompts 1000 \
           --scale_lr --hflip \
-          --parameter_group full-weight \
-          --enable_xformers_memory_efficient_attention 
+          --parameter_group attn --with_prior_preservation \
+          --enable_xformers_memory_efficient_attention --noaug
 ```
+***Nudity detection %age***: 7.65% vs. 19.1% pre-trained model. Using [NudeNet](https://github.com/notAI-tech/NudeNet) detector on [Inaproppriate Image Prompts](https://huggingface.co/datasets/AIML-TUDA/i2p) dataset.
 
 
-**Ablating Violent concept**
 ```
-accelerate config
-export MODEL_NAME="CompVis/stable-diffusion-v1-4"
-export OUTPUT_DIR="logs_ablation/violence"
-
-## launch training script (2 GPUs recommended, if 1 GPU increase --max_train_steps to 800 or increase --train_batch_size=8)
-
+export OUTPUT_DIR="logs_ablation/inappropriate_content"
 accelerate launch train.py \
           --pretrained_model_name_or_path=$MODEL_NAME  \
           --output_dir=$OUTPUT_DIR \
-          --class_data_dir=./data/samples_violence/ \
-          --class_prompt="people"  \
-          --caption_target "violent, horrifying" \
-          --concept_type violence \
+          --class_data_dir=./data/samples_people/ \
+          --class_prompt="people, body, boy, girl, women, man, child"  \
+          --caption_target "violent, horrifying;nudity, nsfw;illegal, schocking; self-harm, harassment" \
+          --concept_type inappropriate_content \
           --resolution=512  \
           --train_batch_size=4  \
-          --learning_rate=2e-7  \
-          --max_train_steps=400 \
+          --learning_rate=4e-6  \
+          --max_train_steps=400 --num_class_prompts 1000 \
           --scale_lr --hflip \
-          --parameter_group full-weight \
-          --enable_xformers_memory_efficient_attention 
+          --parameter_group attn --with_prior_preservation \
+          --enable_xformers_memory_efficient_attention --noaug
 ```
+***Inappropriate content detection %age***: 32.97% vs. 48.5% pre-traiend model. Using union of [Q16 classifier](https://github.com/ml-research/Q16) and [NudeNet](https://github.com/notAI-tech/NudeNet) detector on [Inaproppriate Image Prompts](https://huggingface.co/datasets/AIML-TUDA/i2p) dataset. Note that the classifiers can have false positives, and the model helps reduce the extent of inappropriate content in generated images even when classified as positive. 
 
 **Ablating Memorized Image**
 ```
@@ -144,28 +141,30 @@ accelerate launch train.py \
           --learning_rate=5e-7  \
           --max_train_steps=400 \
           --scale_lr --hflip \
-          --parameter_group full-weight \
+          --parameter_group full-weight --prompt_gen_model openai \
           --enable_xformers_memory_efficient_attention 
 ```
+
+**Training arguments for ablating your own concept**
 
 For each concept ablation, we first generate training images which can take some time. To ablate any new concept, we need to provide the following required details and modify the above training commands accordingly:
 
 * `concept_type`: ['style', 'object', 'memorization'] (required)
 * `caption_target`: concept to be removed (artist, e.g., "van gogh" or instance, e.g., "cat+grumpy cat" or memorization prompt, e.g., "New Orleans House Galaxy Case" )
-* `class_prompt`: if class_prompt is anchor category e.g. `cat`, we use chatGPT api to generate prompts. Otherwise it should be path to the file with prompts corresponding to the anchor cateogyr. 
+* `class_prompt`: The anchor concept that replaces the target concept to be removed, e.g., "cat" when ablating "grumpy cat". We use [instruction tuned llama model](https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct) or ChatGPT api to generate prompts corresponding to the anchor concept, depending on `--prompt_gen_model` (by default meta-llama). If the prompts corresponding to the anchor concept are pre-generated provide the path to the file here. 
 * `name`: name of the experiment
 * `class_data_dir`: path to the folder where generated training images are saved.
 * `mem_impath`: path to the memorized image (required when concept_type='memorization')
 
 Optional:
 
-* `parameter_group`: ['full-weight', 'cross-attn', 'embedding'] (default: 'cross-attn')
+* `parameter_group`: ['full-weight', 'cross-attn', 'embedding', 'attn'] (default: 'cross-attn'). For stronger concept removal add 'attn'
 * `loss_type_reverse`: the loss type for fine-tuning. ['model-based', 'noise-based'] (default: 'model-based')
 * `resume-from-checkpoint-custom`: the checkpoint path of pretrained model
 * `with_prior_preservation`: store-true, add regularization loss on anchor category images.
-* `num_class_images`: number of generated images for fine-tuning (default: 200; 1000 used in paper)
-* `max_train_steps`: overwrite max_steps in fine-tuning (default: 100 for style and object, 400 for memorization)
-* `learning_rate`: overwrite base learning rate (default: 2e-6 for style and object, 5e-7 for memorization)
+* `num_class_images`: number of generated images for fine-tuning (default: 1000 as used in paper)
+* `max_train_steps`: overwrite max_steps in fine-tuning (default: 100 for style and object, 400 for memorization, and inappropriate content)
+* `learning_rate`: overwrite base learning rate (default: 2e-6 for style and object, 4e-6 for inappropriate content, and 5e-7 for memorization,)
 * `checkpointing_steps`: checkpoint saving steps (default: 500). One model is saved at the end by default always.
 * `output_dir`: path where the experiment is saved.
 

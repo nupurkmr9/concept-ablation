@@ -32,7 +32,6 @@ from utils import (
     collate_fn,
     filter,
     getanchorprompts,
-    retrieve,
 )
 
 import diffusers
@@ -43,7 +42,11 @@ from diffusers import (
     DPMSolverMultistepScheduler,
     UNet2DConditionModel,
 )
-from diffusers.models.cross_attention import CrossAttention
+if version.parse(diffusers.__version__) < version.parse("0.20.0"):
+    from diffusers.models.cross_attention import CrossAttention
+else:
+    from diffusers.models.attention import Attention as CrossAttention
+
 from diffusers.optimization import get_scheduler
 from diffusers.utils import check_min_version, is_wandb_available
 from diffusers.utils.import_utils import is_xformers_available
@@ -53,11 +56,16 @@ check_min_version("0.14.0")
 
 logger = get_logger(__name__)
 
-
 def create_custom_diffusion(unet, parameter_group):
     for name, params in unet.named_parameters():
         if parameter_group == "cross-attn":
             if "attn2.to_k" in name or "attn2.to_v" in name:
+                params.requires_grad = True
+            else:
+                params.requires_grad = False
+        elif parameter_group == "attn":
+            if "to_q" in name or "to_k" in name or "to_v" in name or "to_out" in name:
+                print(name)
                 params.requires_grad = True
             else:
                 params.requires_grad = False
@@ -175,7 +183,7 @@ def parse_args(input_args=None):
         "--concept_type",
         type=str,
         required=True,
-        choices=["style", "object", "memorization", "nudity", "violence"],
+        choices=["style", "object", "memorization", "nudity", "inappropriate_content"],
         help="the type of removed concepts",
     )
     parser.add_argument(
@@ -183,6 +191,13 @@ def parse_args(input_args=None):
         type=str,
         required=True,
         help="target style to remove, used when kldiv loss",
+    )
+    parser.add_argument(
+        "--prompt_gen_model",
+        type=str,
+        default="meta-llama",
+        choices=["openai", "meta-llama"],
+        help="the type of model to generate anchor prompts",
     )
     parser.add_argument(
         "--instance_data_dir",
@@ -377,7 +392,7 @@ def parse_args(input_args=None):
         "--parameter_group",
         type=str,
         default="cross-attn",
-        choices=["full-weight", "cross-attn", "embedding"],
+        choices=["full-weight", "attn", "cross-attn", "embedding"],
         help="parameter groups to finetune. Default: full-weight for memorization and cross-attn for others",
     )
     parser.add_argument(
@@ -555,12 +570,11 @@ def main(args):
     accelerator_project_config = ProjectConfiguration(
         total_limit=args.checkpoints_total_limit
     )
-
     accelerator = Accelerator(
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         mixed_precision=args.mixed_precision,
         log_with=args.report_to,
-        logging_dir=logging_dir,
+        project_dir=logging_dir,
         project_config=accelerator_project_config,
     )
 
@@ -655,59 +669,33 @@ def main(args):
             # need to create prompts using class_prompt.
             if not os.path.isfile(concept["class_prompt"]):
                 # style based prompts are retrieved from laion dataset
-                if args.concept_type in ["style", "nudity", "violence"]:
-                    if accelerator.is_main_process:
-                        name = "images"
-                        if (
-                            not Path(os.path.join(class_images_dir, name)).exists()
-                            or len(
-                                list(
-                                    Path(os.path.join(class_images_dir, name)).iterdir()
-                                )
-                            )
-                            < args.num_class_images
-                        ):
-                            retrieve(
-                                concept["class_prompt"],
-                                class_images_dir,
-                                args.num_class_prompts,
-                                save_images=False,
-                            )
-                    with open(os.path.join(class_images_dir, "caption.txt")) as f:
-                        class_prompt_collection = [x.strip() for x in f.readlines()]
-                    accelerator.wait_for_everyone()
-
-                # LLM based prompt collection.
+                if args.concept_type in ["style"]:
+                    with open('../assets/finetune_prompts/painting.txt', 'r') as f:
+                            class_prompt_collection = [x.strip() for x in f.readlines()]
+                elif args.concept_type in ["nudity", "inappropriate_content"]:
+                    with open('../assets/finetune_prompts/people.txt', 'r') as f:
+                            class_prompt_collection = [x.strip() for x in f.readlines()]
+                elif args.class_prompt in ["robot", "cat", "fish", "dog"]:
+                    with open(f'../assets/finetune_prompts/{args.class_prompt}.txt', 'r') as f:
+                            class_prompt_collection = [x.strip() for x in f.readlines()]
+                # LLM based prompt collection for ablating new objects or memorization images
                 else:
                     class_prompt = concept["class_prompt"]
                     # in case of object query chatGPT to generate captions containing the anchor category
-                    if args.concept_type == "object":
-                        class_prompt_collection, _ = getanchorprompts(
-                            pipeline,
-                            accelerator,
-                            class_prompt,
-                            args.concept_type,
-                            class_images_dir,
-                            args.num_class_prompts,
-                        )
-                        with open(class_images_dir / "caption_anchor.txt", "w") as f:
-                            for prompt in class_prompt_collection:
-                                f.write(prompt + "\n")
-                    # in case of memorization query chatGPT to generate different captions that can be paraphrase of the origianl caption
-                    elif args.concept_type == "memorization":
-                        class_prompt_collection, caption_target = getanchorprompts(
-                            pipeline,
-                            accelerator,
-                            class_prompt,
-                            args.concept_type,
-                            class_images_dir,
-                            args.num_class_prompts,
-                            mem_impath=args.mem_impath,
-                        )
-                        concept["caption_target"] += f";*+{caption_target}"
-                        with open(class_images_dir / "caption_target.txt", "w") as f:
-                            f.write(concept["caption_target"])
-                        print(class_prompt_collection, concept["caption_target"])
+                    class_prompt_collection, caption_target = getanchorprompts(
+                        pipeline,
+                        accelerator,
+                        class_prompt,
+                        args.concept_type,
+                        class_images_dir,
+                        args.num_class_prompts,
+                        mem_impath=args.mem_impath if args.concept_type == "memorization" else None,
+                        model_id=args.prompt_gen_model
+                    )
+                    concept["caption_target"] += f";*+{caption_target}"
+                    with open(class_images_dir / "caption_target.txt", "w") as f:
+                        f.write(concept["caption_target"])
+                    print(class_prompt_collection, concept["caption_target"])
             # class_prompt is filepath to prompts.
             else:
                 with open(concept["class_prompt"]) as f:
@@ -741,6 +729,7 @@ def main(args):
                         example["prompt"],
                         num_inference_steps=25,
                         guidance_scale=6.0,
+                        negative_prompt=[args.caption_target]*len(example["prompt"]) if args.concept_type in ["nudity", "inappropriate_content"] else None,
                         eta=1.0,
                     ).images
 
@@ -926,6 +915,14 @@ def main(args):
                     x[1]
                     for x in unet.named_parameters()
                     if ("attn2.to_k" in x[0] or "attn2.to_v" in x[0])
+                ]
+            )
+        elif args.parameter_group == "attn":
+            params_to_optimize = itertools.chain(
+                [
+                    x[1]
+                    for x in unet.named_parameters()
+                    if ("to_q" in x[0] or "to_k" in x[0] or "to_v" in x[0] or "to_out" in x[0] )
                 ]
             )
         if args.parameter_group == "full-weight":
