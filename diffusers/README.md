@@ -42,7 +42,7 @@ accelerate launch train.py \
           --enable_xformers_memory_efficient_attention 
 ```
 
-**Use `--enable_xformers_memory_efficient_attention` for faster training with lower VRAM requirement (16GB per GPU).**
+**Use `--enable_xformers_memory_efficient_attention` for faster training with a lower VRAM requirement (16GB per GPU).**
 
 **Ablating Objects/Instances**
 ```
@@ -68,11 +68,12 @@ accelerate launch train.py \
           --enable_xformers_memory_efficient_attention 
 ```
 
-When ablating for target objects with overlapping text prompt between anchor and the target, e.g., `caption_target="grumpy cat+cat"` and `class_prompt="cat"`, we also add `--with_prior_preservation`. 
+When ablating for target objects with overlapping text prompt between the anchor and the target, e.g., `--caption_target "grumpy cat+cat"` and `--class_prompt "cat"`, we also add `--with_prior_preservation`. 
 
 
-**Ablating Nudity and Violent concept**
-Note: this was added after the ICCV publication and updated based on the discussio in the issue[](). We use a higher learning rate, with all attention parameter fine-tuning using our proposed objective. 
+**Ablating Nudity and Inappropriate Concept**
+
+Note: this was added after the ICCV publication and updated based on the discussion in the [issue](https://github.com/nupurkmr9/concept-ablation/issues/13). We use a higher learning rate, with all attention parameter fine-tuning using our proposed objective. 
 
 ```
 accelerate config
@@ -96,7 +97,7 @@ accelerate launch train.py \
           --parameter_group attn --with_prior_preservation \
           --enable_xformers_memory_efficient_attention --noaug
 ```
-***Nudity detection %age***: 7.65% vs. 19.1% pre-trained model. Using [NudeNet](https://github.com/notAI-tech/NudeNet) detector on [Inaproppriate Image Prompts](https://huggingface.co/datasets/AIML-TUDA/i2p) dataset.
+***Nudity detection***: 7.65% vs. 19.1% pre-trained model. Using [NudeNet](https://github.com/notAI-tech/NudeNet) detector on [Inaproppriate Image Prompts](https://huggingface.co/datasets/AIML-TUDA/i2p) dataset.
 
 
 ```
@@ -116,7 +117,7 @@ accelerate launch train.py \
           --parameter_group attn --with_prior_preservation \
           --enable_xformers_memory_efficient_attention --noaug
 ```
-***Inappropriate content detection %age***: 32.97% vs. 48.5% pre-traiend model. Using union of [Q16 classifier](https://github.com/ml-research/Q16) and [NudeNet](https://github.com/notAI-tech/NudeNet) detector on [Inaproppriate Image Prompts](https://huggingface.co/datasets/AIML-TUDA/i2p) dataset. Note that the classifiers can have false positives, and the model helps reduce the extent of inappropriate content in generated images even when classified as positive. 
+***Inappropriate content detection***: 32.97% vs. 48.5% pre-traiend model. Using union of [Q16 classifier](https://github.com/ml-research/Q16) and [NudeNet](https://github.com/notAI-tech/NudeNet) detector on [Inaproppriate Image Prompts](https://huggingface.co/datasets/AIML-TUDA/i2p) dataset. Note that the classifiers can have false positives, and the model helps reduce the extent of inappropriate content in generated images even when classified as positive. 
 
 **Ablating Memorized Image**
 ```
@@ -145,7 +146,7 @@ accelerate launch train.py \
           --enable_xformers_memory_efficient_attention 
 ```
 
-**Training arguments for ablating your own concept**
+### Training arguments for ablating your own concept
 
 For each concept ablation, we first generate training images which can take some time. To ablate any new concept, we need to provide the following required details and modify the above training commands accordingly:
 
@@ -170,7 +171,7 @@ Optional:
 
 
 
-#### Inference
+### Inference
 
 ```python
 from model_pipeline import CustomDiffusionPipeline
@@ -184,7 +185,7 @@ image.save("vangogh.png")
 ```
 
 
-#### Evaluation of Ablating Style and Instance
+### Evaluation of Ablating Style and Instance
 
 For model evaluation, we provide a script to compute CLIP score, CLIP accuracy and KID metrics.
 It consists of two separate stages, **generation** and **evaluation**
@@ -239,7 +240,7 @@ caption target:{
 }
 ````
 
-#### Evaluation of Ablating Memorized Image
+### Evaluation of Ablating Memorized Image
 
 ```python
 from model_pipeline import CustomDiffusionPipeline

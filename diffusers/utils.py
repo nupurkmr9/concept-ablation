@@ -93,7 +93,7 @@ class CustomDiffusionDataset(Dataset):
         self.size = size
         self.center_crop = center_crop
         self.tokenizer = tokenizer
-        self.interpolation = Image.BILINEAR
+        self.interpolation = Image.LANCZOS
         self.aug = aug
         self.concept_type = concept_type
 
@@ -139,7 +139,7 @@ class CustomDiffusionDataset(Dataset):
             [
                 self.flip,
                 transforms.Resize(
-                    size, interpolation=transforms.InterpolationMode.BILINEAR
+                    size, interpolation=transforms.InterpolationMode.LANCZOS
                 ),
                 transforms.CenterCrop(size)
                 if center_crop
