@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html class=" w-mod-ix"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"><style>.wf-force-outline-none[tabindex="-1"]:focus{outline:none;}</style>
+    
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WNGS4SZ3C7"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-N85RJDS2G1');
+    </script>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Ablating Concepts in Text-to-Image Diffusion Models</title>
+    <link rel="stylesheet" href="images/bootstrap.min.css">
+    <link href="images/css.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="images/Highlight-Clean.css">
+    <link rel="stylesheet" href="images/styles.css">
+
+    <link rel="manifest" href=images/site.webmanifest">
+
+    <meta name="description" content="Ablating Concepts in Text-to-Image Diffusion Models, 2023.">
+    <meta property="og:url" content="https://www.cs.cmu.edu/~concept-ablation">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Ablating Concepts in Text-to-Image Diffusion Models">
+    <meta property="og:description" content="Ablating Concepts in Text-to-Image Diffusion Models, 2023.">
+    <meta property="og:image" content="https://www.cs.cmu.edu/~concept-ablation/images/mainpage/thumbnail.jpg">
+
+    <!-- Twitter Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta property="twitter:domain" content="nupurkmr9.github.io">
+    <meta property="twitter:url" content="https://www.cs.cmu.edu/~concept-ablation">
+    <meta name="twitter:title" content="Ablating Concepts in Text-to-Image Diffusion Models">
+    <meta name="twitter:description" content="Ablating Concepts in Text-to-Image Diffusion Models, 2023.">
+    <meta name="twitter:image" content="https://www.cs.cmu.edu/~concept-ablation/images/mainpage/thumbnail.jpg">
+
+
+    <script src="images/video_comparison.js"></script>
+    <script type="module" src="images/model-viewer.min.js"></script>
+    <style>
+        strong {
+          font-weight: bold;
+        }
+    </style>
+
+  
+</head>
+
+<body>
+
+    
+    <!-- <div class="banner">
+      <video class="video lazy" poster="https://pub-b1f092b6867f4495b8f149d222a3bffe.r2.dev/sept28/banner_1x6_customhue_A.jpg" autoplay="autoplay" loop="" playsinline="" muted="muted">
+        <source data-src="https://pub-b1f092b6867f4495b8f149d222a3bffe.r2.dev/sept28/banner_1x6_customhue_A.mp4" type="video/mp4" src="images/banner_1x6_customhue_A.mp4">
+      </video>
+    </div> -->
+    <div class="highlight-clean d-flex flex-column align-items-center justify-content-center" style="padding-bottom: 20px;">
+        <div class="container" style="padding-bottom: 10px; max-width: 1000px;">
+            <h1 class="text-center">Ablating Concepts in Text-to-Image Diffusion Models</h1>
+        </div>
+        <div class="container  d-flex flex-column align-items-center justify-content-center" style="max-width: 900px;">
+            <div class="row authors" style="padding-bottom: 20px;">
+                <h5 class="text-center"><a class="text-center" href="https://nupurkmr9.github.io">Nupur Kumari</a><sup>1</sup></h5>
+                <h5 class="text-center"><a class="text-center" href="https://zhangbingliang2019.github.io">Bingliang Zhang</a><sup>2</sup></h5>
+                <h5 class="text-center"><a class="text-center" href="https://peterwang512.github.io">Sheng-Yu Wang</a><sup>1</sup></h5>
+                <h5 class="text-center"><a class="text-center" href="https://research.adobe.com/person/eli-shechtman/">Eli Shechtman</a><sup>3</sup></h5>
+                <h5 class="text-center"><a href="https://richzhang.github.io">Richard Zhang</a><sup>3</sup></h5>
+                <h5 class="text-center"><a class="text-center" href="https://www.cs.cmu.edu/~junyanz/">Jun-Yan Zhu</a><sup>1</sup></h5>
+                
+            </div>    
+            <div class="row authors institute">
+                <div class="col-sm-12">
+                    <h3 class="text-center"><sup>1</sup> CMU &nbsp&nbsp <sup>2</sup>Tsinghua University &nbsp&nbsp <sup>3</sup>Adobe Research</h3>
+                </div>
+            </div>    
+            <div class="row authors institute">
+                <div class="col-sm-12">
+                    <h3 class="text-center"> ICCV 2023 </h3>
+                </div>
+            </div>    
+        </div>
+        <div class="buttons" style="margin-bottom: 8px;">
+            <a class="btn btn-light" role="button" href="https://github.com/nupurkmr9/concept-ablation">
+                <svg style="visibility:hidden;width:0px;height:24px;margin-left:-12px;margin-right:12px" width="0px" height="24px" viewBox="0 0 375 531">
+                    <polygon stroke="#000000" points="0.5,0.866 459.5,265.87 0.5,530.874 "/>
+                </svg>
+                Code
+            </a>
+            <a class="btn btn-light" role="button" href="https://arxiv.org/abs/2303.13516">
+                <svg style="width:24px;height:24px;margin-left:-12px;margin-right:12px" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M16 0H8C6.9 0 6 .9 6 2V18C6 19.1 6.9 20 8 20H20C21.1 20 22 19.1 22 18V6L16 0M20 18H8V2H15V7H20V18M4 4V22H20V24H4C2.9 24 2 23.1 2 22V4H4M10 10V12H18V10H10M10 14V16H15V14H10Z"></path>
+                </svg>Paper
+            </a>
+            <a class="btn btn-light disabled border border-dark" aria-disabled="true" role="button" href="#">
+                <svg style="visibility:hidden;width:0px;height:24px;margin-left:-12px;margin-right:12px" width="0px" height="24px" viewBox="0 0 375 531">
+                    <polygon stroke="#000000" points="0.5,0.866 459.5,265.87 0.5,530.874 "/>
+                </svg>
+                Project
+            </a>
+            <a class="btn btn-light" role="button" href="results.html">
+                <svg style="width:24px;height:24px;margin-left:-12px;margin-right:12px" width="24px" height="24px" viewBox="0 0 375 531">
+                    <polygon stroke="#000000" points="0.5,0.866 459.5,265.87 0.5,530.874 "/>
+                </svg>
+                Gallery
+            </a>
+            <a class="btn btn-light" role="button" href="https://github.com/nupurkmr9/concept-ablation/raw/gh-pages/models/concept_ablation.pptx">
+                <svg style="width:24px;height:24px;margin-left:-12px;margin-right:12px" width="24px" height="24px" viewBox="0 0 44 44"><path fill="currentColor" d="M10,26h8a2,2,0,0,0,2-2V14a2,2,0,0,0-2-2H10a2,2,0,0,0-2,2V24A2,2,0,0,0,10,26Zm0-12h8V24H10Zm15,4H35a1,1,0,0,0,0-2H25a1,1,0,0,0,0,2Zm0-4h6a1,1,0,0,0,0-2H25a1,1,0,0,0,0,2Zm0,8h4a1,1,0,0,0,0-2H25a1,1,0,0,0,0,2ZM42,2H24a2,2,0,0,0-4,0H2A2,2,0,0,0,0,4V6A2,2,0,0,0,2,8V32a2,2,0,0,0,2,2H21v2.59l-5.71,5.71a1,1,0,1,0,1.41,1.41L22,38.41l5.29,5.29a1,1,0,1,0,1.41-1.41L23,36.59V34H40a2,2,0,0,0,2-2V8a2,2,0,0,0,2-2V4A2,2,0,0,0,42,2ZM40,32H4V8H40ZM42,6H2V4H42ZM25,26H35a1,1,0,0,0,0-2H25a1,1,0,0,0,0,2Z"/></path>
+                </svg>
+                Slides
+            </a>
+             <a class="btn btn-light" role="button" href="https://huggingface.co/spaces/nupurkmr9/concept-ablation">
+                <svg style="width:24px;height:24px;margin-left:-12px;margin-right:12px" viewBox="0 0 375 531">
+                    <img src="images/huggingface_logo-noborder.svg" style="width:24px;height:24px;margin-left:-12px;margin-right:12px"/>
+                </svg>
+                Demo
+            </a>
+        </div>
+    </div>
+
+    <div class="container" style="max-width: 1200px;">
+        <div class="row teaser">
+            <div class="col-md-12">
+                <!-- Large format devices -->
+                <center><img src="images/mainpage/teaser.jpg" style="width: 90%;"/></center>
+                <p>Our method can ablate (remove) copyrighted materials and memorized images from pretrained text-to-image diffusion models. We change the target concept distribution to an anchor concept e.g., <strong>Van Gogh painting</strong> to <strong>paintings</strong>, or <strong> Grumpy cat</strong> to <strong>Cat</strong>. Our method can also prevent the generation of memorized images.
+
+                </p><p></p>
+                <h6 class="caption"></h6>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- <hr class="divider"> -->
+    <hr style="max-width: 1200px;">
+    <div class="container" style="max-width: 1200px;">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Abstract</h2>
+                <p>
+                    Large-scale text-to-image diffusion models can generate high-fidelity images with powerful compositional ability. However, these models are typically trained on an enormous amount of Internet data, often containing copyrighted material, licensed images, and personal photos. Furthermore, they have been found to replicate the style of various living artists or memorize exact training samples. How can we remove such copyrighted concepts or images without retraining the model from scratch? 
+                    To achieve this goal, we propose an efficient method of ablating concepts in the pretrained model, i.e., preventing the generation of a target concept. Our algorithm learns to match the image distribution for a target style, instance, or text prompt we wish to ablate to the distribution corresponding to an anchor concept. This prevents the model from generating target concepts given its text condition.
+                    Extensive experiments show that our method can successfully prevent the generation of the ablated concept while preserving closely related concepts in the model.  
+                </p>
+                
+            </div>
+        </div>
+    </div>
+
+   
+
+    <!-- <hr class="divider"> -->
+    <hr style="max-width: 1200px;">
+    <div class="container" style="max-width: 1200px;">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Algorithm</h2>
+                <p>
+                Given a target concept <strong>Grumpy Cat</strong> to ablate and the anchor concept <strong>Cat</strong>, we fine-tune the model to have the same prediction given the target concept prompt <strong>A cute little
+                    Grumpy Cat</strong> as when the prompt is <strong>A cute little cat</strong>. The algorithm aims at minimizing the KL divergence between the target concept generated image distribution and anchor concept image distribution. 
+                </p>
+                <p></p><p></p>
+                <div style="text-align: center;">
+                    <img src="images/mainpage/methodology.jpg" style="width: 50%;"/>
+                  </div>
+                <p></p><p></p>
+
+            </div>
+        </div>
+    </div>
+
+  
+    <!-- <hr class="divider"> -->
+    <hr style="max-width: 1200px;">
+    <div class="container" style="max-width: 1200px;">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Ablating Instances</h2>
+                We show results with ablating various instances and overwriting it with a general category anchor concept. Ablated model generates anchor concept images whereas pretrained model generates the target concept. All our experiments are based on <a href="https://huggingface.co/CompVis/stable-diffusion-v-1-4-original" target="_blank">Stable Diffusion</a>. For comparison to baselines, please refer to our  <a href="results.html">Gallery</a> page.  <strong>Click images to see more examples.</strong>
+                <p></p><p></p>
+                <div id="singleconceptscroll" class="container" style="max-width: 1200px; ">
+
+                            <!--/ Animation. -->
+                <br>
+                <center>
+                    
+
+                <!-- <div class="row"> -->
+                <div id="instanceblation" class="row" style="cursor:pointer; max-width: 900px; margin:0px">
+                <!-- <h3 class="text-center">Ablated Concept</h3>
+                <p>(Should be different than pretrained model)</p> -->
+                </div>
+                    <!-- <div id="instanceblation_surrounding" class="col-sm-6"  style="cursor:pointer; max-width: 600px; margin:0px">
+                    <h3 class="text-center">Surrounding Concept</h3>
+                    <p>(Should be similar to pretrained model)</p>
+                    </div> -->
+                <!-- </div> -->
+                </center>
+                </div>
+            </div>
+        </div>
+        <hr style="max-width: 1000px;">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Ablating Styles</h2>
+                We show results of ablating different target style concepts and generating normal paintings instead. Ablated model generates images different than the pretrained model for the given target concept. <strong>Click images to see more examples.</strong>
+                <p></p><p></p>
+                <div id="singleconceptscroll" class="container" style="max-width: 1200px; ">
+                <br>
+                <center>
+                    
+                <!-- <div class="row"> -->
+                <div id="styleablation" class="row" style="cursor:pointer; max-width: 900px; margin:0px">
+                <!-- <h3 class="text-center">Ablated Concept</h3>
+                <p>(Should be different than pretrained model)</p> -->
+                </div>
+                    <!-- <div id="styleablation_surrounding" class="col-sm-6"  style="cursor:pointer; max-width: 600px; margin:0px">
+                    <h3 class="text-center">Surrounding Concept</h3>
+                    <p>(Should be similar to pretrained model)</p>
+                    </div> -->
+                <!-- </div> -->
+            
+                </center>
+                
+                </div>
+            </div>
+        </div>
+
+        <hr style="max-width: 1000px;">
+        
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Ablating Memorized Images</h2>
+                <p>Diffusion models have been shown to generate exact (or close) copies of training images [<a href="https://arxiv.org/abs/2301.13188">1</a>,<a href="https://arxiv.org/abs/2212.03860">2</a>]. Our method can also be used to ablate these memorized training images and instead generate variations. <strong>Click images to see more examples.</strong> </p>
+                <p></p><p></p>
+                <div id="singleconceptscroll" class="container" style="max-width: 1200px; ">
+
+                            <!--/ Animation. -->
+                <br>
+                <center>
+                    
+
+                <div id="trainingablation" class="row" style="cursor:pointer; max-width: 900px; margin:0px">
+                </div>
+                </center>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            class ClickListener {
+                // create container element for image and text
+                constructor(images, title, divelement) {
+                this.rootElement = document.querySelector( divelement );
+        
+                this.container = document.createElement("div");
+                this.container.style.display = "flex";
+                this.container.style.alignItems = "center";
+                this.container.style.marginBottom = "20px";
+                this.container.style.width = "100%"; // set container width to 100%
+                this.container.style.flexWrap = "nowrap"; // allow flex items to wrap
+                this.rootElement.appendChild(this.container);
+        
+                this.titleelement = document.createElement("img");
+                this.titleelement.src = title
+                this.titleelement.style.marginRight = "-5px";
+                this.titleelement.style.marginLeft = "0px";
+                this.titleelement.style.width = `calc(100% / 17)`;
+                this.titleelement.style.flexShrink = "0"; // prevent text from shrinking to fit content
+                this.container.appendChild(this.titleelement);
+        
+                // create image element and add to container
+                this.element = document.createElement("img");
+                this.element.style.height = "auto";
+                this.element.style.maxWidth = "100%";
+                this.container.appendChild(this.element);
+        
+                // set flex values for container and child elements
+                this.container.style.flex = "1 0 auto"; // set container to grow and shrink as needed
+                // textElement.style.flex = "1 1 200px"; // set text element to grow and shrink as needed, with a minimum width of 200px
+                this.element.style.flex = "16 1 0"; // set image element to take up 8 times the space of the text element, with a minimum width of 0
+        
+                this.images = images
+                this.idx = 0
+                this.k = 0;
+        
+                this.init();
+        
+                }
+                
+        
+                init() {
+                this.element.src = this.images[this.idx]
+                // this.element.style.height = `320px`;
+                this.element.onclick = this.nextImage.bind(this); 
+                }
+        
+                nextImage() {
+                this.idx++;
+                if(this.idx >= this.images.length) {
+                    this.idx = 0;
+                }
+                    this.element.src = this.images[this.idx];
+                    // setTimeout(this.identity(), 300); setTimeout(this.swapping(), 300);
+                }
+                }
+
+
+            class ClickListener1 {
+                // create container element for image and text
+                constructor(images, divelement) {
+                this.rootElement = document.querySelector( divelement );
+        
+                this.container = document.createElement("div");
+                this.container.style.display = "flex";
+                this.container.style.alignItems = "center";
+                this.container.style.marginBottom = "20px";
+                this.container.style.width = "100%"; // set container width to 100%
+                this.container.style.flexWrap = "nowrap"; // allow flex items to wrap
+                this.rootElement.appendChild(this.container);
+        
+                // create image element and add to container
+                this.element = document.createElement("img");
+                this.element.style.height = "auto";
+                this.element.style.maxWidth = "100%";
+                this.container.appendChild(this.element);
+        
+                // set flex values for container and child elements
+                this.container.style.flex = "1 0 auto"; // set container to grow and shrink as needed
+                // textElement.style.flex = "1 1 200px"; // set text element to grow and shrink as needed, with a minimum width of 200px
+                this.element.style.flex = "17 0 0"; // set image element to take up 8 times the space of the text element, with a minimum width of 0
+        
+                this.images = images
+                this.idx = 0
+                this.k = 0;
+        
+                this.init();
+        
+                }
+                
+        
+                init() {
+                this.element.src = this.images[this.idx]
+                // this.element.style.height = `320px`;
+                this.element.onclick = this.nextImage.bind(this); 
+                }
+        
+                nextImage() {
+                this.idx++;
+                if(this.idx >= this.images.length) {
+                    this.idx = 0;
+                }
+                    this.element.src = this.images[this.idx];
+                    // setTimeout(this.identity(), 300); setTimeout(this.swapping(), 300);
+                }
+            }
+        
+            
+            </script>
+        
+            <script>
+            new ClickListener(['./images/static/vangogh_vangogh_0.jpg', './images/static/vangogh_vangogh_1.jpg', './images/static/vangogh_vangogh_3.jpg', './images/static/vangogh_vangogh_4.jpg','./images/static/vangogh_vangogh_5.jpg', './images/static/vangogh_vangogh_6.jpg', './images/static/vangogh_vangogh_7.jpg', './images/static/vangogh_vangogh_8.jpg', './images/static/vangogh_vangogh_9.jpg'], './images/static/vangogh.png', '#styleablation')
+            // new ClickListener(['./images/static/vangogh_monet_0.jpg', './images/static/vangogh_monet_1.jpg', './images/static/vangogh_monet_2.jpg', './images/static/vangogh_monet_3.jpg', './images/static/vangogh_monet_4.jpg','./images/static/vangogh_monet_5.jpg', './images/static/vangogh_monet_6.jpg', './images/static/vangogh_monet_7.jpg', './images/static/vangogh_monet_8.jpg', './images/static/vangogh_monet_9.jpg'], './images/static/monet.png', '#styleablation_surrounding')
+            new ClickListener(['./images/static/basquiat_basquiat_0.jpg', './images/static/basquiat_basquiat_1.jpg', './images/static/basquiat_basquiat_2.jpg', './images/static/basquiat_basquiat_3.jpg', './images/static/basquiat_basquiat_4.jpg','./images/static/basquiat_basquiat_5.jpg', './images/static/basquiat_basquiat_6.jpg', './images/static/basquiat_basquiat_7.jpg', './images/static/basquiat_basquiat_8.jpg', './images/static/basquiat_basquiat_9.jpg'], './images/static/basquiat.png', '#styleablation')
+            // new ClickListener(['./images/static/basquiat_andywarhol_0.jpg', './images/static/basquiat_andywarhol_1.jpg', './images/static/basquiat_andywarhol_2.jpg', './images/static/basquiat_andywarhol_3.jpg', './images/static/basquiat_andywarhol_4.jpg','./images/static/basquiat_andywarhol_5.jpg', './images/static/basquiat_andywarhol_6.jpg', './images/static/basquiat_andywarhol_7.jpg', './images/static/basquiat_andywarhol_8.jpg', './images/static/basquiat_andywarhol_9.jpg'], './images/static/andywarhol.png', '#styleablation_surrounding')
+        
+            new ClickListener(['./images/static/monet_monet_0.jpg', './images/static/monet_monet_1.jpg', './images/static/monet_monet_2.jpg', './images/static/monet_monet_3.jpg', './images/static/monet_monet_4.jpg','./images/static/monet_monet_5.jpg', './images/static/monet_monet_6.jpg', './images/static/monet_monet_7.jpg', './images/static/monet_monet_8.jpg', './images/static/monet_monet_9.jpg'], './images/static/monet.png', '#styleablation')
+            // new ClickListener(['./images/static/monet_vangogh_0.jpg', './images/static/monet_vangogh_1.jpg', './images/static/monet_vangogh_2.jpg', './images/static/monet_vangogh_3.jpg', './images/static/monet_vangogh_4.jpg','./images/static/monet_vangogh_5.jpg', './images/static/monet_vangogh_6.jpg', './images/static/monet_vangogh_7.jpg', './images/static/monet_vangogh_8.jpg', './images/static/monet_vangogh_9.jpg'], './images/static/vangogh.png', '#styleablation_surrounding')
+        
+            new ClickListener(['./images/static/greg_greg_0.jpg', './images/static/greg_greg_1.jpg', './images/static/greg_greg_2.jpg', './images/static/greg_greg_3.jpg', './images/static/greg_greg_4.jpg','./images/static/greg_greg_5.jpg', './images/static/greg_greg_6.jpg', './images/static/greg_greg_7.jpg', './images/static/greg_greg_8.jpg', './images/static/greg_greg_9.jpg'], './images/static/greg.png', '#styleablation')
+            // new ClickListener(['./images/static/greg_jeremy_0.jpg', './images/static/greg_jeremy_1.jpg', './images/static/greg_jeremy_2.jpg', './images/static/greg_jeremy_3.jpg', './images/static/greg_jeremy_4.jpg','./images/static/greg_jeremy_5.jpg', './images/static/greg_jeremy_6.jpg', './images/static/greg_jeremy_7.jpg', './images/static/greg_jeremy_8.jpg', './images/static/greg_jeremy_9.jpg'], './images/static/jeremy.png', '#styleablation_surrounding')
+            new ClickListener(['./images/static/salvador_salvador_0.jpg', './images/static/salvador_salvador_1.jpg', './images/static/salvador_salvador_2.jpg', './images/static/salvador_salvador_3.jpg', './images/static/salvador_salvador_4.jpg','./images/static/salvador_salvador_5.jpg', './images/static/salvador_salvador_6.jpg', './images/static/salvador_salvador_7.jpg', './images/static/salvador_salvador_8.jpg', './images/static/salvador_salvador_9.jpg'], './images/static/salvador.png', '#styleablation')
+            // new ClickListener(['./images/static/salvador_vangogh_0.jpg', './images/static/salvador_vangogh_1.jpg', './images/static/salvador_vangogh_2.jpg', './images/static/salvador_vangogh_3.jpg', './images/static/salvador_vangogh_4.jpg','./images/static/salvador_vangogh_5.jpg', './images/static/salvador_vangogh_6.jpg', './images/static/salvador_vangogh_7.jpg', './images/static/salvador_vangogh_8.jpg', './images/static/salvador_vangogh_9.jpg'], './images/static/vangogh.png', '#styleablation_surrounding')
+        
+            new ClickListener(['./images/static/grumpy_cat_0.jpg', './images/static/grumpy_cat_1.jpg', './images/static/grumpy_cat_2.jpg', './images/static/grumpy_cat_3.jpg', './images/static/grumpy_cat_4.jpg','./images/static/grumpy_cat_5.jpg', './images/static/grumpy_cat_6.jpg', './images/static/grumpy_cat_7.jpg', './images/static/grumpy_cat_8.jpg', './images/static/grumpy_cat_9.jpg'], './images/static/grumpy.png', '#instanceblation')
+            // new ClickListener(['./images/static/scottish_fold_cat_0.jpg', './images/static/scottish_fold_cat_1.jpg', './images/static/scottish_fold_cat_2.jpg', './images/static/scottish_fold_cat_3.jpg', './images/static/scottish_fold_cat_4.jpg','./images/static/scottish_fold_cat_5.jpg', './images/static/scottish_fold_cat_6.jpg', './images/static/scottish_fold_cat_7.jpg', './images/static/scottish_fold_cat_8.jpg', './images/static/scottish_fold_cat_9.jpg'], './images/static/scottish_fold_cat.png', '#instanceblation_surrounding')
+
+            new ClickListener(['./images/static/r2d2_0.jpg', './images/static/r2d2_1.jpg', './images/static/r2d2_2.jpg', './images/static/r2d2_3.jpg', './images/static/r2d2_4.jpg','./images/static/r2d2_5.jpg', './images/static/r2d2_6.jpg', './images/static/r2d2_7.jpg', './images/static/r2d2_8.jpg', './images/static/r2d2_9.jpg'], './images/static/r2d2.png', '#instanceblation')
+            // new ClickListener(['./images/static/bb8_0.jpg', './images/static/bb8_1.jpg', './images/static/bb8_2.jpg', './images/static/bb8_3.jpg', './images/static/bb8_4.jpg','./images/static/bb8_5.jpg', './images/static/bb8_6.jpg', './images/static/bb8_7.jpg', './images/static/bb8_8.jpg', './images/static/bb8_9.jpg'], './images/static/bb8.png', '#instanceblation_surrounding')
+            
+            new ClickListener(['./images/static/nemo_0.jpg', './images/static/nemo_1.jpg', './images/static/nemo_2.jpg', './images/static/nemo_3.jpg', './images/static/nemo_4.jpg','./images/static/nemo_5.jpg', './images/static/nemo_6.jpg', './images/static/nemo_7.jpg', './images/static/nemo_8.jpg', './images/static/nemo_9.jpg'], './images/static/nemo.png', '#instanceblation')
+            // new ClickListener(['./images/static/clown_fish_0.jpg', './images/static/clown_fish_1.jpg', './images/static/clown_fish_2.jpg', './images/static/clown_fish_3.jpg', './images/static/clown_fish_4.jpg','./images/static/clown_fish_5.jpg', './images/static/clown_fish_6.jpg', './images/static/clown_fish_7.jpg', './images/static/clown_fish_8.jpg', './images/static/clown_fish_9.jpg'], './images/static/clown_fish.png', '#instanceblation_surrounding')
+
+            new ClickListener(['./images/static/snoopy_0.jpg', './images/static/snoopy_1.jpg', './images/static/snoopy_2.jpg', './images/static/snoopy_3.jpg', './images/static/snoopy_4.jpg','./images/static/snoopy_5.jpg', './images/static/snoopy_6.jpg', './images/static/snoopy_7.jpg', './images/static/snoopy_8.jpg', './images/static/snoopy_9.jpg'], './images/static/snoopy.png', '#instanceblation')
+            // new ClickListener(['./images/static/beagles_0.jpg', './images/static/beagles_1.jpg', './images/static/beagles_2.jpg', './images/static/beagles_3.jpg', './images/static/beagles_4.jpg','./images/static/beagles_5.jpg', './images/static/beagles_6.jpg', './images/static/beagles_7.jpg', './images/static/beagles_8.jpg', './images/static/beagles_9.jpg'], './images/static/beagles.png', '#instanceblation_surrounding')
+
+            new ClickListener1(['./images/static/orleans_ablated.jpg', './images/static/marvel_ablated.jpg', './images/static/tiger_ablated.jpg', './images/static/bloodborne_ablated.jpg', './images/static/terrace_ablated.jpg', './images/static/longdark_ablated.jpg', './images/static/canvas_ablated.jpg', './images/static/anne_ablated.jpg'], '#trainingablation')
+                                    
+        </script>
+
+    </div>
+
+    
+    <hr style="max-width: 1200px;">
+    <div class="container" style="max-width: 1200px;">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Compositional Ablation </h2>
+                <p>  we show that our method can be used to ablate the composition of two concepts while still preserving the meaning of each concept, for example, ablating "kids with guns" but still generating each category individually. 
+                </p> 
+                <p></p><p></p>
+                <div id="composition" class="container" style="max-width: 1200px;">
+                    <center> <img  src="images/mainpage/compose_ablation.jpg" style="width: 80%; margin-left: auto; margin-right: auto;" /> </center>
+                        
+                </div>
+                <p></p><p></p>
+
+            </div>
+        </div>
+    </div>
+
+    <hr style="max-width: 1200px;">
+    <div class="container" style="max-width: 1200px;">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Limitations </h2>
+                <p> Our method has still various limitations. It sometimes fails to ablate some famous paintings and can lead to degradation in some closely surrounding concepts.
+                    <p>
+                        In the below figure (a), our method fails to remove certain paintings generated with the painting's titles. We can further ablate these concepts as shown in (b). In figure(c), after we remove the target concept (e.g., Van Gogh), the results sometimes slightly degrade for surrounding concepts (Monet) compared to the pretrained model in figure (d).
+                    </p>
+                </p> 
+                <p></p><p></p>
+                <div id="limitation" class="container" style="max-width: 1200px;">
+
+                    <center> <img  src="images/mainpage/limitation.jpg" style="width: 50%; margin-left: auto; margin-right: auto;" /> </center>
+                        
+                </div>
+                <p></p><p></p>
+
+            </div>
+        </div>
+    </div>
+
+
+
+    <hr style="max-width: 1200px;">
+    <div class="container" style="max-width: 1200px;">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Citation</h2>
+                <code>
+                    @inproceedings{kumari2023conceptablation,<br>
+                    &nbsp; author = {Kumari, Nupur and Zhang, Bingliang and Wang, Sheng-Yu and Shechtman, Eli and Zhang, Richard and Zhu, Jun-Yan},<br>
+                    &nbsp; title  = {Ablating Concepts in Text-to-Image Diffusion Models},<br>
+                    &nbsp; booktitle = International Conference on Computer Vision (ICCV),<br>
+                    &nbsp; year   = {2023},<br>
+                }</code>
+            </div>
+        </div>
+    </div>
+
+    <hr style="max-width: 1200px;">
+    <div class="container" style="max-width: 1200px;">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Concurrent Work</h2>
+                <h5>
+                <ul>
+
+                    <li>Rohit Gandikota, Joanna Materzynska, Jaden Fiotto-Kaufman, and David Bau. <a href="https://erasing.baulab.info">Erasing Concepts from Diffusion Models.</a> arXiv preprint arXiv:2303.07345 (2023).</li><br>
+         
+                </ul> 
+            </h5>               
+            </div>
+        </div>
+    </div>
+
+    <hr style="max-width: 1200px;">
+    <div class="container" style="max-width: 1200px;">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Related Works</h2>
+                <h5>
+                <ul>
+                    
+                    <li>Patrick Schramowski, Manuel Brack, Björn Deiseroth, and Kristian Kersting. <a href="https://github.com/ml-research/safe-latent-diffusion"> Safe Latent Diffusion: Mitigating Inappropriate Degeneration in Diffusion Models</a> arXiv preprint arXiv:2211.05105 (2022).</li><br>
+
+                    <li>Zhifeng Kong, and Kamalika Chaudhuri. <a href="https://arxiv.org/abs/2206.14389"> Data Redaction from Pre-trained GANs.</a> In Workshop on Trustworthy and Socially Responsible Machine Learning, NeurIPS 2022.</li><br>
+
+                    <li>Nupur Kumari, Bingliang Zhang, Richard Zhang, Eli Shechtman, and Jun-Yan Zhu. <a href="https://www.cs.cmu.edu/~custom-diffusion"> Multi-Concept Customization of Text-to-Image Diffusion</a> arXiv preprint arXiv:2212.04488 (2022).</li><br>
+
+                    <li>Nataniel Ruiz, Yuanzhen Li, Varun Jampani, Yael Pritch, Michael Rubinstein, and Kfir Aberman. <a href="https://dreambooth.github.io"> Dreambooth: Fine tuning text-to-image diffusion models for subject-driven generation. </a> arXiv preprint arXiv:2208.12242 (2022). </li><br>
+                    
+                    <li>Rinon Gal, Yuval Alaluf, Yuval Atzmon, Or Patashnik, Amit H. Bermano, Gal Chechik, and Daniel Cohen-Or. <a href="https://textual-inversion.github.io">An image is worth one word: Personalizing text-to-image generation using textual inversion.</a> arXiv preprint arXiv:2208.01618 (2022).</li><br>
+                    
+         
+                </ul> 
+            </h5>               
+            </div>
+        </div>
+    </div>
+
+
+    <hr style="max-width: 1200px;">
+    <div class="container" style="max-width: 1200px;">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Acknowledgements</h2>
+                <p> We are grateful to Gaurav Parmar, Daohan Lu, Muyang Li, Songwei Ge, Jingwan Lu, Sylvain Paris, and Bryan Russell for their helpful discussion, and to Aniruddha Mahapatra and Kangle Deng for paper proofreading. The work is partly supported by Adobe and NSF IIS-2239076. The website template is taken from <a href="https://www.cs.cmu.edu/~custom-diffusion/index.html">Custom Diffusion</a> project page.
+                </p>
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+
+    <script src="images/polyfill.js"></script>
+    <script src="images/yall.js"></script>
+    <script>
+        yall(
+            {
+                observeChanges: true
+            }
+        );
+    </script>
+    <script src="images/scripts.js"></script>
+    <script src="images/jquery.min.js"></script>
+    <script src="images/bootstrap.bundle.min.js"></script>
+    <script src="images/webflow.fd002feec.js"></script>
+    
+    <!-- Import the component -->
+
+
+
+</body></html>

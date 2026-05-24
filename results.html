@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html class=" w-mod-ix"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"><style>.wf-force-outline-none[tabindex="-1"]:focus{outline:none;}</style>
+    
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WNGS4SZ3C7"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-N85RJDS2G1');
+    </script>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no">
+    <title>Ablating Concepts in Text-to-Image Diffusion Models</title>
+    <link rel="stylesheet" href="images/bootstrap.min.css">
+    <link href="images/css.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" href="images/Highlight-Clean.css">
+    <link rel="stylesheet" href="images/styles.css">
+
+    <link rel="manifest" href=images/site.webmanifest">
+
+    <meta name="description" content="Ablating Concepts in Text-to-Image Diffusion Models, 2023.">
+    <meta property="og:url" content="https://www.cs.cmu.edu/~concept-ablation">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Ablating Concepts in Text-to-Image Diffusion Models">
+    <meta property="og:description" content="Ablating Concepts in Text-to-Image Diffusion Models, 2023.">
+    <meta property="og:image" content="https://www.cs.cmu.edu/~concept-ablation/images/mainpage/thumbnail.jpg">
+
+    <!-- Twitter Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta property="twitter:domain" content="nupurkmr9.github.io">
+    <meta property="twitter:url" content="https://www.cs.cmu.edu/~concept-ablation">
+    <meta name="twitter:title" content="Ablating Concepts in Text-to-Image Diffusion Models">
+    <meta name="twitter:description" content="Ablating Concepts in Text-to-Image Diffusion Models, 2023.">
+    <meta name="twitter:image" content="https://www.cs.cmu.edu/~concept-ablation/images/mainpage/thumbnail.jpg">
+
+
+    <script src="images/video_comparison.js"></script>
+    <script type="module" src="images/model-viewer.min.js"></script>
+    <style>
+        strong {
+          font-weight: bold;
+        }
+    </style>
+
+  
+</head>
+
+<body>
+   
+    <!-- <div class="banner">
+      <video class="video lazy" poster="https://pub-b1f092b6867f4495b8f149d222a3bffe.r2.dev/sept28/banner_1x6_customhue_A.jpg" autoplay="autoplay" loop="" playsinline="" muted="muted">
+        <source data-src="https://pub-b1f092b6867f4495b8f149d222a3bffe.r2.dev/sept28/banner_1x6_customhue_A.mp4" type="video/mp4" src="images/banner_1x6_customhue_A.mp4">
+      </video>
+    </div> -->
+    <div class="highlight-clean d-flex flex-column align-items-center justify-content-center" style="padding-bottom: 20px;">
+        <div class="container" style="padding-bottom: 10px; max-width: 1000px;">
+            <h1 class="text-center">Ablating Concepts in Text-to-Image Diffusion Models</h1>
+        </div>
+        <div class="container  d-flex flex-column align-items-center justify-content-center" style="max-width: 900px;">
+            <div class="row authors" style="padding-bottom: 20px;">
+                <h5 class="text-center"><a class="text-center" href="https://nupurkmr9.github.io">Nupur Kumari</a><sup>1</sup></h5>
+                <h5 class="text-center"><a class="text-center" href="https://zhangbingliang2019.github.io">Bingliang Zhang</a><sup>2</sup></h5>
+                <h5 class="text-center"><a class="text-center" href="https://peterwang512.github.io">Sheng-Yu Wang</a><sup>1</sup></h5>
+                <h5 class="text-center"><a class="text-center" href="https://research.adobe.com/person/eli-shechtman/">Eli Shechtman</a><sup>3</sup></h5>
+                <h5 class="text-center"><a href="https://richzhang.github.io">Richard Zhang</a><sup>3</sup></h5>
+                <h5 class="text-center"><a class="text-center" href="https://www.cs.cmu.edu/~junyanz/">Jun-Yan Zhu</a><sup>1</sup></h5>
+                
+            </div>    
+            <div class="row authors institute">
+                <div class="col-sm-12">
+                    <h3 class="text-center"><sup>1</sup> CMU &nbsp&nbsp <sup>2</sup>Tsinghua University &nbsp&nbsp <sup>3</sup>Adobe Research</h3>
+                </div>
+            </div>  
+            <div class="row authors institute">
+                <div class="col-sm-12">
+                    <h3 class="text-center"> ICCV 2023 </h3>
+                </div>
+            </div>      
+        </div>
+        <div class="buttons" style="margin-bottom: 8px;">
+            <a class="btn btn-light" role="button" href="https://github.com/nupurkmr9/concept-ablation">
+                <svg style="visibility:hidden;width:0px;height:24px;margin-left:-12px;margin-right:12px" width="0px" height="24px" viewBox="0 0 375 531">
+                    <polygon stroke="#000000" points="0.5,0.866 459.5,265.87 0.5,530.874 "/>
+                </svg>
+                Code
+            </a>
+            <a class="btn btn-light" role="button" href="https://arxiv.org/abs/2303.13516">
+                <svg style="width:24px;height:24px;margin-left:-12px;margin-right:12px" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M16 0H8C6.9 0 6 .9 6 2V18C6 19.1 6.9 20 8 20H20C21.1 20 22 19.1 22 18V6L16 0M20 18H8V2H15V7H20V18M4 4V22H20V24H4C2.9 24 2 23.1 2 22V4H4M10 10V12H18V10H10M10 14V16H15V14H10Z"></path>
+                </svg>Paper
+            </a>
+            <a class="btn btn-light" role="button" href="index.html">
+                <svg style="visibility:hidden;width:0px;height:24px;margin-left:-12px;margin-right:12px" width="0px" height="24px" viewBox="0 0 375 531">
+                    <polygon stroke="#000000" points="0.5,0.866 459.5,265.87 0.5,530.874 "/>
+                </svg>
+                Project
+            </a>
+            <a class="btn btn-light disabled border border-dark" aria-disabled="true" role="button" href="#">
+                <svg style="width:24px;height:24px;margin-left:-12px;margin-right:12px" width="24px" height="24px" viewBox="0 0 375 531">
+                    <polygon stroke="#000000" points="0.5,0.866 459.5,265.87 0.5,530.874 "/>
+                </svg>
+                Gallery
+            </a>
+            <a class="btn btn-light" role="button" href="https://github.com/nupurkmr9/concept-ablation/raw/gh-pages/models/concept_ablation.pptx">
+                <svg style="width:24px;height:24px;margin-left:-12px;margin-right:12px" width="24px" height="24px" viewBox="0 0 44 44"><path fill="currentColor" d="M10,26h8a2,2,0,0,0,2-2V14a2,2,0,0,0-2-2H10a2,2,0,0,0-2,2V24A2,2,0,0,0,10,26Zm0-12h8V24H10Zm15,4H35a1,1,0,0,0,0-2H25a1,1,0,0,0,0,2Zm0-4h6a1,1,0,0,0,0-2H25a1,1,0,0,0,0,2Zm0,8h4a1,1,0,0,0,0-2H25a1,1,0,0,0,0,2ZM42,2H24a2,2,0,0,0-4,0H2A2,2,0,0,0,0,4V6A2,2,0,0,0,2,8V32a2,2,0,0,0,2,2H21v2.59l-5.71,5.71a1,1,0,1,0,1.41,1.41L22,38.41l5.29,5.29a1,1,0,1,0,1.41-1.41L23,36.59V34H40a2,2,0,0,0,2-2V8a2,2,0,0,0,2-2V4A2,2,0,0,0,42,2ZM40,32H4V8H40ZM42,6H2V4H42ZM25,26H35a1,1,0,0,0,0-2H25a1,1,0,0,0,0,2Z"/></path>
+                </svg>
+                Slides
+            </a>
+            <a class="btn btn-light" role="button" href="https://huggingface.co/spaces/nupurkmr9/concept-ablation">
+                <svg style="width:24px;height:24px;margin-left:-12px;margin-right:12px" viewBox="0 0 375 531">
+                    <img src="images/huggingface_logo-noborder.svg" style="width:24px;height:24px;margin-left:-12px;margin-right:12px"/>
+                </svg>
+                Demo
+            </a>
+        </div>
+    </div>
+
+    <hr style="max-width: 1200px;">
+
+    
+
+  
+    <!-- <hr class="divider"> -->
+    <div class="container" style="max-width: 1200px;">
+        
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Ablating Instances (<span style="font-weight:900 font-size: 50%;">click images to see more examples</span>) </h2>
+                <p>We show qualitative comparison of our model-based concept ablation method (2nd row), with our noise-based variant (3rd row) and the baseline method of maximizing the loss (4rth row) on ablating various instances. In our noise-based variant we fine-tune the model on the redefined training pair of (target concept caption, anchor concept image). <strong> On target concept the more different the samples compared to one by pretrained model the better. On surrounding concept the more similar the samples to the one generated by pretrained model the better. </strong>  </p><p></p>
+                <div id="singleconceptscroll" class="container" style="max-width: 1200px; ">
+                <br>
+                <center>
+
+                <div class="row">
+                    <div class="col d-flex align-items-center" style="cursor:pointer; max-width: 100px; margin:0px">
+                        <center>
+                            <img src="./images/static/grumpy.png" style="width: 100%; vertical-align: middle"/>
+                        </center>
+                    </div>
+                    <div class="col" style="cursor:pointer; max-width: 1100px; margin:0px">
+                        <div id="instanceblationgrumpy" class="row" style="cursor:pointer; max-width: 1100px; margin:0px">
+                        <!-- <h3 class="text-center">Ablated Concept</h3>
+                        <p>(Should be different than pretrained model)</p> -->
+                        </div>
+                        <div id="instanceblationgrumpy_surrounding" class="row"  style="cursor:pointer; max-width: 1100px; margin:0px">
+                        <!-- <h3 class="text-center">Surrounding Concept</h3>
+                        <p>(Should be similar to pretrained model)</p> -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col d-flex align-items-center" style="cursor:pointer; max-width: 100px; margin:0px">
+                        <center>
+                            <img src="./images/static/r2d2.png" style="width: 100%; vertical-align: middle"/>
+                        </center>
+                    </div>
+                    <div class="col" style="cursor:pointer; max-width: 1100px; margin:0px">
+                        <div id="instanceblationr2d2" class="row" style="cursor:pointer; max-width: 1100px; margin:0px">
+                        <!-- <h3 class="text-center">Ablated Concept</h3>
+                        <p>(Should be different than pretrained model)</p> -->
+                        </div>
+                        <div id="instanceblationr2d2_surrounding" class="row"  style="cursor:pointer; max-width: 1100px; margin:0px">
+                        <!-- <h3 class="text-center">Surrounding Concept</h3>
+                        <p>(Should be similar to pretrained model)</p> -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col d-flex align-items-center" style="cursor:pointer; max-width: 100px; margin:0px">
+                        <center>
+                            <img src="./images/static/nemo.png" style="width: 100%; vertical-align: middle"/>
+                        </center>
+                    </div>
+                    <div class="col" style="cursor:pointer; max-width: 1100px; margin:0px">
+                        <div id="instanceblationnemo" class="row" style="cursor:pointer; max-width: 1100px; margin:0px">
+                        <!-- <h3 class="text-center">Ablated Concept</h3>
+                        <p>(Should be different than pretrained model)</p> -->
+                        </div>
+                        <div id="instanceblationnemo_surrounding" class="row"  style="cursor:pointer; max-width: 1100px; margin:0px">
+                        <!-- <h3 class="text-center">Surrounding Concept</h3>
+                        <p>(Should be similar to pretrained model)</p> -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col d-flex align-items-center" style="cursor:pointer; max-width: 100px; margin:0px">
+                        <center>
+                            <img src="./images/static/snoopy.png" style="width: 100%; vertical-align: middle"/>
+                        </center>
+                    </div>
+                    <div class="col" style="cursor:pointer; max-width: 1100px; margin:0px">
+                        <div id="instanceblationsnoopy" class="row" style="cursor:pointer; max-width: 1100px; margin:0px">
+                        <!-- <h3 class="text-center">Ablated Concept</h3>
+                        <p>(Should be different than pretrained model)</p> -->
+                        </div>
+                        <div id="instanceblationsnoopy_surrounding" class="row"  style="cursor:pointer; max-width: 1100px; margin:0px">
+                        <!-- <h3 class="text-center">Surrounding Concept</h3>
+                        <p>(Should be similar to pretrained model)</p> -->
+                        </div>
+                    </div>
+                </div>
+
+                
+                </center>
+                </div>
+            </div>
+        </div>
+
+        <!-- <hr style="max-width: 1000px;"> -->
+        
+        <script>
+            class ClickListener {
+                // create container element for image and text
+                constructor(images, title, divelement) {
+                this.rootElement = document.querySelector( divelement );
+        
+                this.container = document.createElement("div");
+                this.container.style.display = "flex";
+                this.container.style.alignItems = "center";
+                this.container.style.marginBottom = "20px";
+                this.container.style.width = "100%"; // set container width to 100%
+                this.container.style.flexWrap = "nowrap"; // allow flex items to wrap
+                this.rootElement.appendChild(this.container);
+        
+                // this.titleelement = document.createElement("img");
+                // this.titleelement.src = title
+                // this.titleelement.style.marginRight = "-5px";
+                // this.titleelement.style.marginLeft = "0px";
+                // this.titleelement.style.width = `calc(100% / 17)`;
+                // this.titleelement.style.flexShrink = "0"; // prevent text from shrinking to fit content
+                // this.container.appendChild(this.titleelement);
+        
+                // create image element and add to container
+                this.element = document.createElement("img");
+                this.element.style.height = "auto";
+                this.element.style.maxWidth = "100%";
+                this.container.appendChild(this.element);
+        
+                // set flex values for container and child elements
+                this.container.style.flex = "1 0 auto"; // set container to grow and shrink as needed
+                // textElement.style.flex = "1 1 200px"; // set text element to grow and shrink as needed, with a minimum width of 200px
+                this.element.style.flex = "16 0 0"; // set image element to take up 8 times the space of the text element, with a minimum width of 0
+        
+                this.images = images
+                this.idx = 0
+                this.k = 0;
+        
+                this.init();
+        
+                }
+                
+        
+                init() {
+                this.element.src = this.images[this.idx]
+                // this.element.style.height = `320px`;
+                this.element.onclick = this.nextImage.bind(this); 
+                }
+        
+                nextImage() {
+                this.idx++;
+                if(this.idx >= this.images.length) {
+                    this.idx = 0;
+                }
+                    this.element.src = this.images[this.idx];
+                    // setTimeout(this.identity(), 300); setTimeout(this.swapping(), 300);
+                }
+                }
+        
+            
+            </script>
+        
+            <script>
+           
+            new ClickListener(['./images/static/gallery/grumpy_cat_0.jpg', './images/static/gallery/grumpy_cat_1.jpg', './images/static/gallery/grumpy_cat_2.jpg', './images/static/gallery/grumpy_cat_3.jpg', './images/static/gallery/grumpy_cat_4.jpg','./images/static/gallery/grumpy_cat_5.jpg', './images/static/gallery/grumpy_cat_6.jpg', './images/static/gallery/grumpy_cat_7.jpg', './images/static/gallery/grumpy_cat_8.jpg', './images/static/gallery/grumpy_cat_9.jpg'], './images/static/gallery/grumpy.png', '#instanceblationgrumpy')
+            new ClickListener(['./images/static/gallery/scottish_fold_cat_0.jpg', './images/static/gallery/scottish_fold_cat_1.jpg', './images/static/gallery/scottish_fold_cat_2.jpg', './images/static/gallery/scottish_fold_cat_3.jpg', './images/static/gallery/scottish_fold_cat_4.jpg','./images/static/gallery/scottish_fold_cat_5.jpg', './images/static/gallery/scottish_fold_cat_6.jpg', './images/static/gallery/scottish_fold_cat_7.jpg', './images/static/gallery/scottish_fold_cat_8.jpg', './images/static/gallery/scottish_fold_cat_9.jpg'], './images/static/gallery/scottish_fold_cat.png', '#instanceblationgrumpy_surrounding')
+            new ClickListener(['./images/static/gallery/r2d2_1.jpg', './images/static/gallery/r2d2_0.jpg', './images/static/gallery/r2d2_2.jpg', './images/static/gallery/r2d2_3.jpg', './images/static/gallery/r2d2_4.jpg','./images/static/gallery/r2d2_5.jpg', './images/static/gallery/r2d2_6.jpg', './images/static/gallery/r2d2_7.jpg', './images/static/gallery/r2d2_8.jpg', './images/static/gallery/r2d2_9.jpg'], './images/static/gallery/r2d2.png', '#instanceblationr2d2')
+            new ClickListener(['./images/static/gallery/bb8_1.jpg', './images/static/gallery/bb8_0.jpg', './images/static/gallery/bb8_2.jpg', './images/static/gallery/bb8_3.jpg', './images/static/gallery/bb8_4.jpg','./images/static/gallery/bb8_5.jpg', './images/static/gallery/bb8_6.jpg', './images/static/gallery/bb8_7.jpg', './images/static/gallery/bb8_8.jpg', './images/static/gallery/bb8_9.jpg'], './images/static/bb8.png', '#instanceblationr2d2_surrounding')
+            new ClickListener(['./images/static/gallery/nemo_0.jpg', './images/static/gallery/nemo_1.jpg', './images/static/gallery/nemo_2.jpg', './images/static/gallery/nemo_3.jpg', './images/static/gallery/nemo_4.jpg','./images/static/gallery/nemo_5.jpg', './images/static/gallery/nemo_6.jpg', './images/static/gallery/nemo_7.jpg', './images/static/gallery/nemo_8.jpg', './images/static/gallery/nemo_9.jpg'], './images/static/gallery/nemo.png', '#instanceblationnemo')
+            new ClickListener(['./images/static/gallery/clown_fish_0.jpg', './images/static/gallery/clown_fish_1.jpg', './images/static/gallery/clown_fish_2.jpg', './images/static/gallery/clown_fish_3.jpg', './images/static/gallery/clown_fish_4.jpg','./images/static/gallery/clown_fish_5.jpg', './images/static/gallery/clown_fish_6.jpg', './images/static/gallery/clown_fish_7.jpg', './images/static/gallery/clown_fish_8.jpg', './images/static/gallery/clown_fish_9.jpg'], './images/static/gallery/clown_fish.png', '#instanceblationnemo_surrounding')
+
+            new ClickListener(['./images/static/gallery/snoopy_0.jpg', './images/static/gallery/snoopy_1.jpg', './images/static/gallery/snoopy_2.jpg', './images/static/gallery/snoopy_3.jpg', './images/static/gallery/snoopy_4.jpg','./images/static/gallery/snoopy_5.jpg', './images/static/gallery/snoopy_6.jpg', './images/static/gallery/snoopy_7.jpg', './images/static/gallery/snoopy_8.jpg', './images/static/gallery/snoopy_9.jpg'], './images/static/gallery/snoopy.png', '#instanceblationsnoopy')
+            new ClickListener(['./images/static/gallery/beagles_0.jpg', './images/static/gallery/beagles_1.jpg', './images/static/gallery/beagles_2.jpg', './images/static/gallery/beagles_3.jpg', './images/static/gallery/beagles_4.jpg','./images/static/gallery/beagles_5.jpg', './images/static/gallery/beagles_6.jpg', './images/static/gallery/beagles_7.jpg', './images/static/gallery/beagles_8.jpg', './images/static/gallery/beagles_9.jpg'], './images/static/gallery/beagles.png', '#instanceblationsnoopy_surrounding')
+
+                                    
+        </script>
+
+    </div>
+
+
+
+
+
+
+    <script src="images/polyfill.js"></script>
+    <script src="images/yall.js"></script>
+    <script>
+        yall(
+            {
+                observeChanges: true
+            }
+        );
+    </script>
+    <script src="images/scripts.js"></script>
+    <script src="images/jquery.min.js"></script>
+    <script src="images/bootstrap.bundle.min.js"></script>
+    <script src="images/webflow.fd002feec.js"></script>
+    
+    <!-- Import the component -->
+
+
+
+</body></html>
