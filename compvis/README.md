@@ -15,7 +15,7 @@ cd ../../compvis
 ```
 
 
-**Ablated Models:** we provide some of the ablated models with cross-attention weights fine-tuning [here](https://www.cs.cmu.edu/~concept-ablation/models/). 
+**Ablated Models:** we provide some of the ablated models with cross-attention weights fine-tuning [here](https://huggingface.co/nupurkmr9/concept-ablation/tree/main/models). 
 To sample images from provided models: 
 ```
 python sample.py --ckpt assets/pretrained_models/sd-v1-4.ckpt --delta_ckpt {downloaded-file} --prompt {} --ddim_steps 100 --outdir {} --n_copies 10 
